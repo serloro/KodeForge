@@ -98,6 +98,8 @@ fun HomeScreen(
                 ToolScreen(
                     toolType = screen.toolType,
                     project = project,
+                    workspace = workspace,
+                    onWorkspaceUpdate = onWorkspaceUpdate,
                     onBack = { currentScreen = Screen.ProjectView(project) }
                 )
             } else {

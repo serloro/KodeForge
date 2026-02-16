@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Project
+import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
@@ -25,8 +26,12 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * - Descripción breve
  * - "En construcción"
  * 
+ * Para "info": renderiza InfoToolScreen
+ * 
  * @param toolType Tipo de tool (smtp, rest, sftp, bbdd, tasks, info)
  * @param project Proyecto actual
+ * @param workspace Workspace actual
+ * @param onWorkspaceUpdate Callback para actualizar workspace
  * @param onBack Callback para volver
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,9 +39,24 @@ import com.kodeforge.ui.theme.KodeForgeColors
 fun ToolScreen(
     toolType: String,
     project: Project,
+    workspace: Workspace,
+    onWorkspaceUpdate: (Workspace) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Si es "info", renderizar InfoToolScreen
+    if (toolType == "info") {
+        InfoToolScreen(
+            workspace = workspace,
+            project = project,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            modifier = modifier
+        )
+        return
+    }
+    
+    // Para otros tools, mostrar placeholder
     val toolConfig = toolConfigs[toolType] ?: ToolConfig(
         id = toolType,
         title = "Tool Desconocido",
