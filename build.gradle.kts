@@ -76,6 +76,18 @@ tasks.register<JavaExec>("runDemo") {
     workingDir = projectDir
 }
 
+tasks.register<JavaExec>("runSchedulerDemo") {
+    group = "application"
+    description = "Ejecuta la demostración del Scheduler Secuencial MVP"
+    dependsOn("jvmMainClasses")
+    classpath = files(
+        kotlin.jvm().compilations.getByName("main").output.allOutputs,
+        kotlin.jvm().compilations.getByName("main").runtimeDependencyFiles
+    )
+    mainClass.set("com.kodeforge.SchedulerDemoKt")
+    workingDir = projectDir
+}
+
 // Configurar aplicación Compose Desktop
 compose.desktop {
     application {
