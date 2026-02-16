@@ -12,14 +12,16 @@ import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Task
 import com.kodeforge.ui.theme.KodeForgeColors
+import com.kodeforge.ui.theme.KodeForgeSpacing
 
 /**
  * Sidebar de KodeForge con Projects y Personas.
  * 
  * Layout refinado según specs/p1.png:
- * - Ancho: 280dp (más espacioso)
- * - Padding vertical superior: 20dp (más generoso)
- * - Separación entre secciones: 32dp (más clara)
+ * - Ancho: 240dp (según specs)
+ * - Fondo: #F7F8FA (BackgroundSecondary)
+ * - Padding: 12dp
+ * - Spacing entre secciones: 24dp
  */
 @Composable
 fun Sidebar(
@@ -39,19 +41,19 @@ fun Sidebar(
         if (hasTasks) 1 else 0
     }
     
-    // Surface con sombra para separación del main content
+    // Surface sin sombra (más limpio según specs)
     Surface(
         modifier = modifier
-            .width(280.dp) // Aumentado de 240dp para más espacio
+            .width(KodeForgeSpacing.SidebarWidth) // 240dp según specs
             .fillMaxHeight(),
-        color = KodeForgeColors.SidebarBackground,
-        shadowElevation = 0.5.dp // Sombra más sutil
+        color = KodeForgeColors.BackgroundSecondary, // #F7F8FA según specs
+        tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState())
-                .padding(top = 20.dp, bottom = 20.dp) // Padding vertical más generoso
+                .padding(KodeForgeSpacing.SM) // 12dp según specs
         ) {
             // Sección Projects
             SidebarSection(
@@ -67,14 +69,14 @@ fun Sidebar(
                 }
             )
             
-            // Espaciador entre secciones (más generoso según p1.png)
-            Spacer(Modifier.height(32.dp)) // Aumentado de 24dp
+            // Espaciador entre secciones (según specs)
+            Spacer(Modifier.height(KodeForgeSpacing.LG)) // 24dp
             Divider(
-                modifier = Modifier.padding(horizontal = 16.dp), // Padding más generoso
+                modifier = Modifier.padding(horizontal = KodeForgeSpacing.MD), // 16dp
                 color = KodeForgeColors.Divider,
                 thickness = 1.dp
             )
-            Spacer(Modifier.height(32.dp)) // Aumentado de 24dp
+            Spacer(Modifier.height(KodeForgeSpacing.LG)) // 24dp
             
             // Sección Personas
             SidebarSection(

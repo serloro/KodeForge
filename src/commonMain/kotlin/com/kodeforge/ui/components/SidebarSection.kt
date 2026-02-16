@@ -7,19 +7,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.ui.theme.KodeForgeColors
+import com.kodeforge.ui.theme.KodeForgeSpacing
+import com.kodeforge.ui.theme.KodeForgeTextStyles
 
 /**
  * Sección reutilizable del sidebar (Projects o Personas).
  * 
  * Layout refinado según specs/p1.png:
- * - Padding horizontal más generoso: 16dp
- * - Título con font-size ligeramente mayor
- * - Espaciado más claro entre header y lista
+ * - Título: 14sp medium (TextSecondary)
+ * - Botón gestionar: más compacto (28dp)
+ * - Spacing entre items: 8dp
  */
 @Composable
 fun <T> SidebarSection(
@@ -36,51 +36,37 @@ fun <T> SidebarSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp), // Padding más generoso
+                .padding(horizontal = KodeForgeSpacing.XS), // 8dp
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Título de la sección (font-size mayor según p1.png)
+            // Título de la sección (14sp medium según specs)
             Text(
                 text = title,
-                fontSize = 15.sp, // Aumentado de 14sp implícito
-                color = KodeForgeColors.TextPrimary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.sp
+                style = KodeForgeTextStyles.SidebarSectionTitle,
+                color = KodeForgeColors.TextSecondary
             )
             
             // Botón "Gestionar" discreto
-            TextButton(
+            IconButton(
                 onClick = onManage,
-                modifier = Modifier.height(28.dp), // Ligeramente más alto
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFF8E8E93) // Gris más claro como en p1.png
-                )
+                modifier = Modifier.size(28.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Gestionar $title",
-                    modifier = Modifier.size(13.dp), // Ligeramente mayor
-                    tint = Color(0xFF8E8E93)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = "Gestionar",
-                    fontSize = 12.sp, // Ligeramente mayor
-                    fontWeight = FontWeight.Normal
+                    modifier = Modifier.size(16.dp),
+                    tint = KodeForgeColors.Gray400
                 )
             }
         }
         
-        Spacer(Modifier.height(8.dp)) // Espaciado entre header y lista
+        Spacer(Modifier.height(KodeForgeSpacing.XS)) // 8dp
         
         // Lista de items
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp), // Padding más generoso
-            verticalArrangement = Arrangement.spacedBy(4.dp) // Espaciado mayor entre items
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(KodeForgeSpacing.XS) // 8dp según specs
         ) {
             items.forEach { item ->
                 itemContent(item)

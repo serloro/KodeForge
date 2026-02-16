@@ -113,7 +113,9 @@ fun ProjectTimeline(
                 Divider(color = Color(0xFFE0E0E0))
                 
                 // Filas de personas
-                LazyColumn {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+                ) {
                     items(projectMembers) { person ->
                         val personTasks = workspace.tasks.filter {
                             it.assigneeId == person.id &&

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
+import com.kodeforge.smtp.SmtpServerManager
 import com.kodeforge.ui.components.Header
 import com.kodeforge.ui.components.Sidebar
 import com.kodeforge.ui.theme.KodeForgeColors
@@ -33,6 +34,7 @@ import com.kodeforge.ui.theme.KodeForgeColors
 @Composable
 fun HomeScreen(
     workspace: Workspace,
+    smtpServerManager: SmtpServerManager,
     onWorkspaceUpdate: (Workspace) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -99,6 +101,7 @@ fun HomeScreen(
                     toolType = screen.toolType,
                     project = project,
                     workspace = workspace,
+                    smtpServerManager = smtpServerManager,
                     onWorkspaceUpdate = onWorkspaceUpdate,
                     onBack = { currentScreen = Screen.ProjectView(project) }
                 )

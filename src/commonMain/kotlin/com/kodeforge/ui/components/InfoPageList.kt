@@ -96,6 +96,7 @@ fun InfoPageList(
             }
         } else {
             LazyColumn(
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(pages) { page ->

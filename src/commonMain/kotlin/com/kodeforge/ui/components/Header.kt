@@ -14,18 +14,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.ui.theme.KodeForgeColors
+import com.kodeforge.ui.theme.KodeForgeSpacing
 
 /**
  * Header principal de KodeForge.
  * 
  * Layout refinado según specs/p1.png:
- * - Izquierda: Icono azul + "KodeForge"
- * - Derecha: Botón "+ Nuevo Proyecto"
- * 
- * Ajustes de spacing:
- * - Altura: 72dp (más generosa)
- * - Padding horizontal: 32dp (más espacioso)
- * - Icono: 36dp (más compacto)
+ * - Altura: 64dp
+ * - Padding horizontal: 24dp
+ * - Sombra: 1dp (sutil)
+ * - Icono: 32dp con "K"
+ * - Botón: Primary con bordes redondeados
  */
 @Composable
 fun Header(
@@ -35,35 +34,36 @@ fun Header(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = KodeForgeColors.Surface,
-        shadowElevation = 1.dp // Sombra más sutil
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp) // Aumentado de 64dp para más espacio
-                .padding(horizontal = 32.dp, vertical = 16.dp), // Padding más generoso
+                .height(KodeForgeSpacing.HeaderHeight) // 64dp según specs
+                .padding(horizontal = KodeForgeSpacing.LG), // 24dp según specs
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Logo + Nombre
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp) // Reducido ligeramente
+                horizontalArrangement = Arrangement.spacedBy(KodeForgeSpacing.SM) // 12dp
             ) {
-                // Icono azul en cuadrado redondeado (más pequeño según p1.png)
+                // Icono azul en cuadrado redondeado
                 Box(
                     modifier = Modifier
-                        .size(36.dp) // Reducido de 40dp
+                        .size(32.dp)
                         .background(
                             color = KodeForgeColors.Primary,
-                            shape = RoundedCornerShape(6.dp) // Border radius proporcional
+                            shape = RoundedCornerShape(8.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "K",
                         color = Color.White,
-                        fontSize = 18.sp, // Proporcional al tamaño
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
@@ -71,10 +71,9 @@ fun Header(
                 // Nombre de la app
                 Text(
                     text = "KodeForge",
-                    fontSize = 20.sp, // Tamaño explícito para mayor control
+                    fontSize = 20.sp,
                     color = KodeForgeColors.Primary,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp // Más compacto como en p1.png
+                    fontWeight = FontWeight.Bold
                 )
             }
             
@@ -85,18 +84,18 @@ fun Header(
                     containerColor = KodeForgeColors.Primary
                 ),
                 elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 1.dp, // Sombra más sutil
-                    pressedElevation = 3.dp
+                    defaultElevation = 1.dp,
+                    pressedElevation = 2.dp
                 ),
-                shape = RoundedCornerShape(6.dp), // Border radius más redondeado
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = KodeForgeSpacing.MD, vertical = KodeForgeSpacing.XS)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp) // Icono más pequeño
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(KodeForgeSpacing.XS)) // 8dp
                 Text(
                     text = "Nuevo Proyecto",
                     fontSize = 14.sp,

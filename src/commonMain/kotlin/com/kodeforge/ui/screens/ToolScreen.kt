@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
+import com.kodeforge.smtp.SmtpServerManager
 import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
@@ -40,6 +41,7 @@ fun ToolScreen(
     toolType: String,
     project: Project,
     workspace: Workspace,
+    smtpServerManager: SmtpServerManager,
     onWorkspaceUpdate: (Workspace) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -59,6 +61,40 @@ fun ToolScreen(
     // Si es "rest", renderizar RestSoapToolScreen
     if (toolType == "rest") {
         RestSoapToolScreen(
+            workspace = workspace,
+            projectId = project.id,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            modifier = modifier
+        )
+        return
+    }
+    
+    // Si es "smtp", renderizar SmtpFakeToolScreen
+    if (toolType == "smtp") {
+        SmtpFakeToolScreen(
+            workspace = workspace,
+            projectId = project.id,
+            smtpServerManager = smtpServerManager,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            modifier = modifier
+        )
+        return
+    }
+    
+    // Si es "bbdd", renderizar DbToolScreen
+    if (toolType == "bbdd") {
+        DbToolScreen(
+            workspace = workspace,
+            projectId = project.id,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            modifier = modifier
+        )
+        return
+    }
+    
+    // Si es "sftp", renderizar SftpToolScreen
+    if (toolType == "sftp") {
+        SftpToolScreen(
             workspace = workspace,
             projectId = project.id,
             onWorkspaceUpdate = onWorkspaceUpdate,

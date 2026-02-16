@@ -393,6 +393,7 @@ private fun CapturesTab(
                 }
             } else {
                 LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filteredCaptures.reversed()) { capture ->
@@ -546,6 +547,7 @@ private fun RoutesTab(
             }
         } else {
             LazyColumn(
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(routes) { route ->

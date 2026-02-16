@@ -1,32 +1,35 @@
 package com.kodeforge.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Task
+import com.kodeforge.ui.theme.KodeForgeColors
+import com.kodeforge.ui.theme.KodeForgeSpacing
 import kotlinx.datetime.LocalDate
 
 /**
  * Fila de timeline para una persona (según p2.png).
  * 
- * Muestra:
- * - Avatar + nombre de la persona
- * - Bloques de tareas en el timeline
- * 
- * T7B: Si isOverloaded = true, resalta en rojo.
+ * Layout refinado según specs/p2.png:
+ * - Altura: 40dp
+ * - Avatar: 32dp con inicial
+ * - Nombre: 14sp
+ * - Si isOverloaded: texto rojo + icono warning
+ * - Spacing: 12dp entre elementos
  * 
  * @param person Persona
  * @param tasks Tareas asignadas a esta persona
@@ -45,51 +48,70 @@ fun TimelineRow(
     isOverloaded: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val nameColor = if (isOverloaded) Color(0xFFF44336) else Color(0xFF1A1A1A)
-    val borderModifier = if (isOverloaded) {
-        Modifier.border(2.dp, Color(0xFFF44336), RoundedCornerShape(8.dp))
+    val textColor = if (isOverloaded) {
+        KodeForgeColors.Error
     } else {
-        Modifier
+        KodeForgeColors.TextPrimary
+    }
+    
+    val avatarBackground = if (isOverloaded) {
+        KodeForgeColors.Error.copy(alpha = 0.1f)
+    } else {
+        KodeForgeColors.Gray200
     }
     
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .padding(vertical = 4.dp)
-            .then(borderModifier),
+            .height(KodeForgeSpacing.TimelineRowHeight), // 40dp según specs
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Avatar + Nombre (ancho fijo)
         Row(
-            modifier = Modifier.width(150.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .width(180.dp)
+                .padding(end = KodeForgeSpacing.MD), // 16dp
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE5E5EA)),
+                    .background(avatarBackground),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = person.displayName.take(1).uppercase(),
-                    color = Color(0xFF616161),
+                    color = textColor,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Medium
                 )
             }
+            
+            Spacer(Modifier.width(KodeForgeSpacing.SM)) // 12dp
             
             // Nombre (rojo si excedido)
             Text(
                 text = person.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontSize = 13.sp,
-                color = nameColor,
-                fontWeight = if (isOverloaded) FontWeight.Bold else FontWeight.Normal
+                fontSize = 14.sp,
+                color = textColor,
+                fontWeight = if (isOverloaded) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
+            
+            // Indicador de excedido
+            if (isOverloaded) {
+                Spacer(Modifier.width(KodeForgeSpacing.XXS)) // 4dp
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Excedido",
+                    tint = KodeForgeColors.Error,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
         
         // Timeline de tareas
@@ -107,4 +129,3 @@ fun TimelineRow(
         }
     }
 }
-

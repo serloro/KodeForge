@@ -10,22 +10,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Person
 import com.kodeforge.ui.theme.KodeForgeColors
+import com.kodeforge.ui.theme.KodeForgeSpacing
 
 /**
  * Item de persona en el sidebar.
  * 
  * Layout refinado según specs/p1.png:
- * - Padding vertical más generoso: 11dp
- * - Avatar: 28dp (ligeramente mayor)
- * - Punto de estado: 9dp (más visible)
- * - Font-size: 14.5sp
- * - Spacing más claro entre elementos
+ * - Altura: 40dp
+ * - Padding: 12dp horizontal
+ * - Avatar: 32dp con inicial
+ * - Indicador de estado: círculo 8dp
+ * - Spacing: 12dp entre elementos
  */
 @Composable
 fun PersonItem(
@@ -35,7 +36,7 @@ fun PersonItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Color del punto de estado
+    // Color del estado
     val statusColor = when {
         isOverloaded -> KodeForgeColors.PersonOverload
         isIdle -> KodeForgeColors.PersonIdle
@@ -45,44 +46,49 @@ fun PersonItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp)) // Border radius más suave
+            .height(40.dp)
+            .clip(RoundedCornerShape(6.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 11.dp), // Padding vertical mayor
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp) // Spacing mayor
+            .padding(horizontal = KodeForgeSpacing.SM), // 12dp
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Punto de estado (más visible según p1.png)
+        // Avatar circular con inicial
         Box(
             modifier = Modifier
-                .size(9.dp) // Aumentado de 8dp
+                .size(32.dp)
                 .clip(CircleShape)
-                .background(statusColor)
-        )
-        
-        // Avatar circular neutral con inicial (ligeramente mayor según p1.png)
-        Box(
-            modifier = Modifier
-                .size(28.dp) // Aumentado de 26dp
-                .clip(CircleShape)
-                .background(Color(0xFFE5E5EA)), // Gris más claro (más cercano a p1.png)
+                .background(statusColor.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = person.displayName.take(1).uppercase(),
-                color = Color(0xFF5A5A5F), // Gris medio para mejor contraste
-                fontSize = 12.sp, // Proporcional al tamaño
-                fontWeight = FontWeight.Bold
+                color = statusColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
             )
         }
+        
+        Spacer(Modifier.width(KodeForgeSpacing.SM)) // 12dp
         
         // Nombre de la persona
         Text(
             text = person.displayName,
-            fontSize = 14.5.sp, // Tamaño explícito para mayor control
+            fontSize = 14.sp,
             color = KodeForgeColors.TextPrimary,
             fontWeight = FontWeight.Normal,
-            letterSpacing = 0.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
+        )
+        
+        Spacer(Modifier.width(KodeForgeSpacing.XS)) // 8dp
+        
+        // Indicador de estado (círculo de color)
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(statusColor)
         )
     }
 }

@@ -103,6 +103,8 @@ class TaskUseCases {
     /**
      * Actualiza una tarea existente.
      * Solo actualiza los campos que no son null.
+     * 
+     * Auto-recalcula el schedule si cambian campos que afectan planning.
      */
     fun updateTask(
         workspace: Workspace,
@@ -148,11 +150,25 @@ class TaskUseCases {
         }
         val updatedWorkspace = workspace.copy(tasks = updatedTasks)
         
-        return Result.success(updatedWorkspace)
+        // Auto-recalculo si cambió algo que afecta planning
+        val needsReschedule = costHours != null || 
+                              priority != null || 
+                              doneHours != null ||
+                              status != null
+        
+        return if (needsReschedule && existingTask.assigneeId != null) {
+            println("🔄 Auto-recalculando schedule (tarea actualizada)...")
+            val planningUseCases = PlanningUseCases()
+            planningUseCases.generateSchedule(updatedWorkspace)
+        } else {
+            Result.success(updatedWorkspace)
+        }
     }
     
     /**
      * Elimina una tarea.
+     * 
+     * Auto-recalcula el schedule para limpiar bloques huérfanos.
      */
     fun deleteTask(
         workspace: Workspace,
@@ -166,12 +182,14 @@ class TaskUseCases {
         val updatedTasks = workspace.tasks.filter { it.id != taskId }
         val updatedWorkspace = workspace.copy(tasks = updatedTasks)
         
-        // TODO (siguiente fase): Si estaba asignada, recalcular scheduler
-        if (existingTask.assigneeId != null) {
-            println("⚠️ Info: Tarea '${existingTask.title}' eliminada. En futuro: recalcular scheduler.")
+        // Auto-recalculo para limpiar bloques huérfanos
+        return if (existingTask.assigneeId != null) {
+            println("🔄 Auto-recalculando schedule (tarea eliminada)...")
+            val planningUseCases = PlanningUseCases()
+            planningUseCases.generateSchedule(updatedWorkspace)
+        } else {
+            Result.success(updatedWorkspace)
         }
-        
-        return Result.success(updatedWorkspace)
     }
     
     /**
@@ -220,14 +238,16 @@ class TaskUseCases {
         }
         val updatedWorkspace = workspace.copy(tasks = updatedTasks)
         
-        // TODO (siguiente fase): Recalcular scheduler con nueva asignación
-        println("✅ Tarea '${updatedTask.title}' asignada a persona '$personId'. En futuro: recalcular scheduler.")
-        
-        return Result.success(updatedWorkspace)
+        // Auto-recalculo para generar bloques de la nueva asignación
+        println("🔄 Auto-recalculando schedule (tarea asignada)...")
+        val planningUseCases = PlanningUseCases()
+        return planningUseCases.generateSchedule(updatedWorkspace)
     }
     
     /**
      * Desasigna una tarea (quita la persona asignada).
+     * 
+     * Auto-recalcula el schedule para limpiar bloques de esta tarea.
      */
     fun unassignTask(
         workspace: Workspace,
@@ -253,10 +273,10 @@ class TaskUseCases {
         }
         val updatedWorkspace = workspace.copy(tasks = updatedTasks)
         
-        // TODO (siguiente fase): Recalcular scheduler sin esta tarea
-        println("ℹ️ Tarea '${updatedTask.title}' desasignada. En futuro: recalcular scheduler.")
-        
-        return Result.success(updatedWorkspace)
+        // Auto-recalculo para limpiar bloques de esta tarea
+        println("🔄 Auto-recalculando schedule (tarea desasignada)...")
+        val planningUseCases = PlanningUseCases()
+        return planningUseCases.generateSchedule(updatedWorkspace)
     }
     
     /**

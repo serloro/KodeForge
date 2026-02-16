@@ -40,13 +40,17 @@ class PlanningUseCases {
         workingDays: List<Int> = listOf(1, 2, 3, 4, 5) // Lun-Vie
     ): Result<Workspace> {
         try {
+            // 0. Limpiar bloques huérfanos antes de regenerar
+            val cleanedWorkspace = cleanOrphanBlocks(workspace).getOrThrow()
+            
             val scheduleBlocks = mutableListOf<ScheduleBlock>()
+            var blockIdCounter = 0 // ID determinista
             
             // Fecha de inicio (default: hoy)
             val start = startDate ?: Clock.System.now().toLocalDateTime(TimeZone.UTC).date
             
             // 1. Filtrar tareas asignadas y no completadas
-            val assignedTasks = workspace.tasks.filter { task ->
+            val assignedTasks = cleanedWorkspace.tasks.filter { task ->
                 task.assigneeId != null && task.status != "completed"
             }
             
@@ -61,7 +65,7 @@ class PlanningUseCases {
                     scheduleBlocks = emptyList()
                 )
                 
-                return Result.success(workspace.copy(planning = planning))
+                return Result.success(cleanedWorkspace.copy(planning = planning))
             }
             
             // 2. Agrupar tareas por persona
@@ -69,7 +73,7 @@ class PlanningUseCases {
             
             // 3. Para cada persona, generar schedule
             for ((personId, tasks) in tasksPerPerson) {
-                val person = workspace.people.find { it.id == personId }
+                val person = cleanedWorkspace.people.find { it.id == personId }
                 
                 if (person == null || !person.active || person.hoursPerDay <= 0) {
                     // Persona no encontrada, inactiva o sin horas disponibles
@@ -90,8 +94,9 @@ class PlanningUseCases {
                     }
                 }
                 
-                // Distribuir tareas en días
+                // Distribuir tareas en días (optimizado con capacidad residual)
                 var currentDate = start
+                var remainingCapacityToday = 0.0 // Capacidad residual del día
                 
                 for ((task, pendingHours) in pendingTasks) {
                     var remainingHours = pendingHours
@@ -100,12 +105,19 @@ class PlanningUseCases {
                         // Saltar fines de semana
                         currentDate = skipToWorkingDay(currentDate, workingDays)
                         
-                        // Calcular horas a asignar este día
-                        val hoursThisDay = minOf(remainingHours, person.hoursPerDay)
+                        // Si no hay capacidad residual, resetear al máximo del día
+                        if (remainingCapacityToday <= 0) {
+                            remainingCapacityToday = person.hoursPerDay
+                        }
                         
-                        // Crear ScheduleBlock
+                        // Calcular horas a asignar este día (usar capacidad residual)
+                        val hoursThisDay = minOf(remainingHours, remainingCapacityToday)
+                        
+                        // Crear ScheduleBlock con ID determinista
+                        blockIdCounter++
+                        val timestamp = Clock.System.now().toEpochMilliseconds()
                         val block = ScheduleBlock(
-                            id = generateScheduleBlockId(scheduleBlocks),
+                            id = "sb_${timestamp}_${blockIdCounter}",
                             personId = personId,
                             taskId = task.id,
                             projectId = task.projectId,
@@ -115,15 +127,14 @@ class PlanningUseCases {
                         
                         scheduleBlocks.add(block)
                         remainingHours -= hoursThisDay
+                        remainingCapacityToday -= hoursThisDay
                         
-                        // Si quedan horas, pasar al siguiente día
-                        if (remainingHours > 0) {
+                        // Si se agotó capacidad del día y quedan horas, pasar al siguiente día
+                        if (remainingCapacityToday <= 0 && remainingHours > 0) {
                             currentDate = currentDate.plus(1, DateTimeUnit.DAY)
+                            remainingCapacityToday = 0.0
                         }
                     }
-                    
-                    // Siguiente tarea empieza en el día actual (sin saltar)
-                    // Esto permite que múltiples tareas compartan el mismo día si hay capacidad
                 }
             }
             
@@ -137,7 +148,7 @@ class PlanningUseCases {
                 scheduleBlocks = scheduleBlocks
             )
             
-            val updatedWorkspace = workspace.copy(planning = planning)
+            val updatedWorkspace = cleanedWorkspace.copy(planning = planning)
             
             println("✅ Schedule generado: ${scheduleBlocks.size} bloques para ${tasksPerPerson.size} personas")
             
@@ -206,21 +217,6 @@ class PlanningUseCases {
     }
     
     /**
-     * Genera un ID único para un ScheduleBlock.
-     */
-    private fun generateScheduleBlockId(existingBlocks: List<ScheduleBlock>): String {
-        val timestamp = Clock.System.now().toEpochMilliseconds()
-        val random = Random.nextInt(1000, 9999)
-        val id = "sb_${timestamp}_$random"
-        
-        return if (existingBlocks.any { it.id == id }) {
-            generateScheduleBlockId(existingBlocks)
-        } else {
-            id
-        }
-    }
-    
-    /**
      * Genera un timestamp ISO 8601.
      */
     private fun generateTimestamp(): String {
@@ -229,73 +225,168 @@ class PlanningUseCases {
         return "${localDateTime.date}T${localDateTime.time}Z"
     }
     
-    /**
-     * Detecta sobrecargas de personas en un rango de fechas.
-     * 
-     * Una persona está excedida en un día si:
-     * Σ hoursPlanned (en ese día) > person.hoursPerDay
-     * 
-     * @param workspace Workspace actual
-     * @param projectId ID del proyecto (opcional, null = todos)
-     * @param startDate Fecha de inicio del rango
-     * @param endDate Fecha de fin del rango
-     * @return Map de personId → OverloadInfo
-     */
-    fun detectOverloads(
-        workspace: Workspace,
-        projectId: String? = null,
-        startDate: LocalDate,
-        endDate: LocalDate
-    ): Map<String, OverloadInfo> {
-        val overloads = mutableMapOf<String, OverloadInfo>()
-        
-        // Filtrar scheduleBlocks por proyecto si se especifica
-        val relevantBlocks = if (projectId != null) {
-            workspace.planning.scheduleBlocks.filter { it.projectId == projectId }
-        } else {
-            workspace.planning.scheduleBlocks
+/**
+ * Limpia bloques huérfanos (referencias a tareas/personas inexistentes).
+ * 
+ * Un bloque es huérfano si:
+ * - taskId no existe en workspace.tasks
+ * - personId no existe en workspace.people
+ * - personId está inactiva
+ * 
+ * @param workspace Workspace actual
+ * @return Workspace con bloques huérfanos eliminados
+ */
+fun cleanOrphanBlocks(workspace: Workspace): Result<Workspace> {
+    val validTaskIds = workspace.tasks.map { it.id }.toSet()
+    val validPersonIds = workspace.people.filter { it.active }.map { it.id }.toSet()
+    
+    val cleanedBlocks = workspace.planning.scheduleBlocks.filter { block ->
+        block.taskId in validTaskIds && block.personId in validPersonIds
+    }
+    
+    val orphanCount = workspace.planning.scheduleBlocks.size - cleanedBlocks.size
+    
+    if (orphanCount > 0) {
+        println("🗑️ Limpiados $orphanCount bloques huérfanos")
+    }
+    
+    val updatedPlanning = workspace.planning.copy(
+        scheduleBlocks = cleanedBlocks,
+        generatedAt = generateTimestamp()
+    )
+    
+    return Result.success(workspace.copy(planning = updatedPlanning))
+}
+
+/**
+ * Valida integridad referencial del planning.
+ * 
+ * Verifica que todos los scheduleBlocks tengan referencias válidas.
+ * 
+ * @param workspace Workspace actual
+ * @return Reporte de integridad
+ */
+fun validatePlanningIntegrity(workspace: Workspace): PlanningIntegrityReport {
+    val issues = mutableListOf<String>()
+    
+    val validTaskIds = workspace.tasks.map { it.id }.toSet()
+    val validPersonIds = workspace.people.map { it.id }.toSet()
+    val activePersonIds = workspace.people.filter { it.active }.map { it.id }.toSet()
+    
+    workspace.planning.scheduleBlocks.forEach { block ->
+        // Validar taskId existe
+        if (block.taskId !in validTaskIds) {
+            issues.add("Block ${block.id}: taskId '${block.taskId}' no existe")
         }
         
-        // Agrupar por persona
-        val blocksByPerson = relevantBlocks.groupBy { it.personId }
+        // Validar personId existe
+        if (block.personId !in validPersonIds) {
+            issues.add("Block ${block.id}: personId '${block.personId}' no existe")
+        }
         
-        blocksByPerson.forEach { (personId, blocks) ->
-            val person = workspace.people.find { it.id == personId } ?: return@forEach
-            
-            val overloadedDates = mutableSetOf<LocalDate>()
-            val detailsByDate = mutableMapOf<LocalDate, DayOverload>()
-            
-            // Agrupar por fecha
-            val blocksByDate = blocks.groupBy { LocalDate.parse(it.date) }
-            
-            blocksByDate.forEach { (date, dayBlocks) ->
-                if (date in startDate..endDate) {
-                    val totalHours = dayBlocks.sumOf { it.hoursPlanned }
-                    
-                    if (totalHours > person.hoursPerDay) {
-                        overloadedDates.add(date)
-                        detailsByDate[date] = DayOverload(
-                            date = date,
-                            hoursPlanned = totalHours,
-                            hoursAvailable = person.hoursPerDay,
-                            excess = totalHours - person.hoursPerDay
-                        )
-                    }
+        // Validar persona está activa
+        if (block.personId !in activePersonIds) {
+            issues.add("Block ${block.id}: personId '${block.personId}' está inactiva")
+        }
+        
+        // Validar hoursPlanned > 0
+        if (block.hoursPlanned <= 0) {
+            issues.add("Block ${block.id}: hoursPlanned <= 0")
+        }
+        
+        // Validar fecha válida
+        try {
+            LocalDate.parse(block.date)
+        } catch (e: Exception) {
+            issues.add("Block ${block.id}: fecha inválida '${block.date}'")
+        }
+    }
+    
+    return PlanningIntegrityReport(
+        isValid = issues.isEmpty(),
+        issues = issues,
+        totalBlocks = workspace.planning.scheduleBlocks.size,
+        validBlocks = workspace.planning.scheduleBlocks.size - issues.size
+    )
+}
+
+/**
+ * Detecta sobrecargas de personas en un rango de fechas.
+ * 
+ * Una persona está excedida en un día si:
+ * Σ hoursPlanned (en ese día) > person.hoursPerDay
+ * 
+ * @param workspace Workspace actual
+ * @param projectId ID del proyecto (opcional, null = todos)
+ * @param startDate Fecha de inicio del rango
+ * @param endDate Fecha de fin del rango
+ * @return Map de personId → OverloadInfo
+ */
+fun detectOverloads(
+    workspace: Workspace,
+    projectId: String? = null,
+    startDate: LocalDate,
+    endDate: LocalDate
+): Map<String, OverloadInfo> {
+    val overloads = mutableMapOf<String, OverloadInfo>()
+    
+    // Filtrar scheduleBlocks por proyecto si se especifica
+    val relevantBlocks = if (projectId != null) {
+        workspace.planning.scheduleBlocks.filter { it.projectId == projectId }
+    } else {
+        workspace.planning.scheduleBlocks
+    }
+    
+    // Agrupar por persona
+    val blocksByPerson = relevantBlocks.groupBy { it.personId }
+    
+    blocksByPerson.forEach { (personId, blocks) ->
+        val person = workspace.people.find { it.id == personId } ?: return@forEach
+        
+        val overloadedDates = mutableSetOf<LocalDate>()
+        val detailsByDate = mutableMapOf<LocalDate, DayOverload>()
+        
+        // Agrupar por fecha
+        val blocksByDate = blocks.groupBy { LocalDate.parse(it.date) }
+        
+        blocksByDate.forEach { (date, dayBlocks) ->
+            if (date in startDate..endDate) {
+                val totalHours = dayBlocks.sumOf { it.hoursPlanned }
+                
+                if (totalHours > person.hoursPerDay) {
+                    overloadedDates.add(date)
+                    detailsByDate[date] = DayOverload(
+                        date = date,
+                        hoursPlanned = totalHours,
+                        hoursAvailable = person.hoursPerDay,
+                        excess = totalHours - person.hoursPerDay
+                    )
                 }
             }
-            
-            if (overloadedDates.isNotEmpty()) {
-                overloads[personId] = OverloadInfo(
-                    personId = personId,
-                    overloadedDates = overloadedDates,
-                    detailsByDate = detailsByDate
-                )
-            }
         }
         
-        return overloads
+        if (overloadedDates.isNotEmpty()) {
+            overloads[personId] = OverloadInfo(
+                personId = personId,
+                overloadedDates = overloadedDates,
+                detailsByDate = detailsByDate
+            )
+        }
     }
+    
+    return overloads
 }
+}
+
+/**
+ * Reporte de integridad del planning.
+ */
+data class PlanningIntegrityReport(
+    val isValid: Boolean,
+    val issues: List<String>,
+    val totalBlocks: Int,
+    val validBlocks: Int
+)
 
 /**
  * Información de sobrecarga de una persona.

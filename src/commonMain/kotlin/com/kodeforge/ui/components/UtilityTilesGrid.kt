@@ -51,9 +51,8 @@ fun UtilityTilesGrid(
                 UtilityTile(
                     icon = utility.icon,
                     title = utility.title,
-                    subtitle = utility.subtitle,
-                    backgroundColor = utility.backgroundColor,
-                    iconColor = utility.iconColor,
+                    iconTint = utility.iconColor,
+                    iconBackground = utility.backgroundColor,
                     onClick = { onUtilityClick(utility.id) }
                 )
             }
@@ -68,7 +67,6 @@ private data class Utility(
     val id: String,
     val icon: ImageVector,
     val title: String,
-    val subtitle: String?,
     val backgroundColor: Color,
     val iconColor: Color
 )
@@ -78,15 +76,13 @@ private val utilities = listOf(
         id = "tempo1",
         icon = Icons.Default.DateRange,
         title = "Tempo",
-        subtitle = "Gestión Tarea 1",
         backgroundColor = Color(0xFFE3F2FD), // Azul claro
         iconColor = Color(0xFF2196F3) // Azul
     ),
     Utility(
         id = "tempo2",
         icon = Icons.Default.DateRange,
-        title = "Tempo",
-        subtitle = "Hory Franquimonos",
+        title = "Tempo 2",
         backgroundColor = Color(0xFFE8F5E9), // Verde claro
         iconColor = Color(0xFF4CAF50) // Verde
     ),
@@ -94,7 +90,6 @@ private val utilities = listOf(
         id = "smtp",
         icon = Icons.Default.Email,
         title = "SMTP Fake",
-        subtitle = "Enviar correos...",
         backgroundColor = Color(0xFFFFF3E0), // Naranja claro
         iconColor = Color(0xFFFF9800) // Naranja
     ),
@@ -102,7 +97,6 @@ private val utilities = listOf(
         id = "rest",
         icon = Icons.Default.Settings,
         title = "REST API",
-        subtitle = "Energizante",
         backgroundColor = Color(0xFFF3E5F5), // Morado claro
         iconColor = Color(0xFF9C27B0) // Morado
     ),
@@ -110,7 +104,6 @@ private val utilities = listOf(
         id = "ajustes",
         icon = Icons.Default.Settings,
         title = "Ajustes",
-        subtitle = "J&0.0.2.9876",
         backgroundColor = Color(0xFFFFEBEE), // Rojo claro
         iconColor = Color(0xFFF44336) // Rojo
     ),
@@ -118,7 +111,6 @@ private val utilities = listOf(
         id = "info",
         icon = Icons.Default.Info,
         title = "Info",
-        subtitle = "Documentación",
         backgroundColor = Color(0xFFFFF9C4), // Amarillo claro
         iconColor = Color(0xFFFBC02D) // Amarillo
     )

@@ -128,7 +128,8 @@ data class AuthConfig(
 data class DbTool(
     val enabled: Boolean = false,
     val connections: List<DbConnection> = emptyList(),
-    val savedQueries: List<SavedQuery> = emptyList()
+    val savedQueries: List<SavedQuery> = emptyList(),
+    val executionHistory: List<QueryExecution> = emptyList()
 )
 
 @Serializable
@@ -149,6 +150,18 @@ data class SavedQuery(
     val name: String,
     val connectionId: String,
     val sql: String
+)
+
+@Serializable
+data class QueryExecution(
+    val id: String,
+    val executedAt: String,
+    val connectionId: String,
+    val sql: String,
+    val success: Boolean,
+    val rowCount: Int = 0,
+    val executionTimeMs: Long = 0,
+    val error: String? = null
 )
 
 // ===== Task Manager Tool =====

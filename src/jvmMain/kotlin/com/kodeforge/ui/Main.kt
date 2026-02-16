@@ -16,6 +16,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.kodeforge.data.repository.JvmFileSystemAdapter
 import com.kodeforge.data.repository.WorkspaceRepository
 import com.kodeforge.domain.model.Workspace
+import com.kodeforge.smtp.SmtpServerManager
 import com.kodeforge.ui.screens.HomeScreen
 import com.kodeforge.ui.theme.KodeForgeTheme
 import kotlinx.coroutines.launch
@@ -41,10 +42,18 @@ fun main() = application {
 @Composable
 fun KodeForgeApp() {
     val repository = remember { WorkspaceRepository(JvmFileSystemAdapter()) }
+    val smtpServerManager = remember { SmtpServerManager() }
     var workspace by remember { mutableStateOf<Workspace?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     
     val scope = rememberCoroutineScope()
+    
+    // Detener todos los servidores al cerrar la aplicación
+    DisposableEffect(Unit) {
+        onDispose {
+            smtpServerManager.stopAllServers()
+        }
+    }
     
     // Cargar workspace al iniciar
     LaunchedEffect(Unit) {
@@ -92,6 +101,7 @@ fun KodeForgeApp() {
                 // Pantalla principal
                 HomeScreen(
                     workspace = workspace!!,
+                    smtpServerManager = smtpServerManager,
                     onWorkspaceUpdate = { updatedWorkspace ->
                         workspace = updatedWorkspace
                         // TODO: Auto-guardar cambios

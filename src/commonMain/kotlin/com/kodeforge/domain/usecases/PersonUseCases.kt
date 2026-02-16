@@ -122,7 +122,14 @@ class PersonUseCases {
         }
         val updatedWorkspace = workspace.copy(people = updatedPeople)
         
-        return Result.success(updatedWorkspace)
+        // Auto-recalculo si cambió hoursPerDay o active (afecta capacidad)
+        return if (hoursPerDay != null || active != null) {
+            println("🔄 Auto-recalculando schedule (persona actualizada)...")
+            val planningUseCases = PlanningUseCases()
+            planningUseCases.generateSchedule(updatedWorkspace)
+        } else {
+            Result.success(updatedWorkspace)
+        }
     }
     
     /**

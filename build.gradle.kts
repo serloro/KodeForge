@@ -52,6 +52,12 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
+                // SubEthaSMTP para servidor SMTP fake
+                implementation("org.subethamail:subethasmtp:3.1.7")
+                // SQLite JDBC para Query Runner
+                implementation("org.xerial:sqlite-jdbc:3.45.1.0")
+                // JSch para conexiones SFTP
+                implementation("com.github.mwiede:jsch:0.2.16")
             }
         }
         
