@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.SftpConnection
 import com.kodeforge.domain.model.SftpTool
 import com.kodeforge.domain.model.Workspace
@@ -20,6 +22,8 @@ import com.kodeforge.domain.usecases.SftpUseCases
 import com.kodeforge.ui.components.SftpConnectionForm
 import com.kodeforge.ui.components.SftpConnectionItem
 import com.kodeforge.ui.components.SftpFileExplorer
+import com.kodeforge.ui.components.ToolLayout
+import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
  * Pantalla principal del tool SFTP.
@@ -29,7 +33,11 @@ import com.kodeforge.ui.components.SftpFileExplorer
 fun SftpToolScreen(
     workspace: Workspace,
     projectId: String,
+    project: Project,
     onWorkspaceUpdate: (Workspace) -> Unit,
+    onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
+    onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val useCases = remember { SftpUseCases() }
@@ -55,9 +63,19 @@ fun SftpToolScreen(
         return
     }
     
-    Column(
-        modifier = modifier.fillMaxSize()
+    ToolLayout(
+        project = project,
+        toolTitle = "SFTP/SSH",
+        selectedToolId = "sftp",
+        onBack = onBack,
+        onToolClick = onToolClick,
+        onBackToHub = onBackToHub,
+        modifier = modifier
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+        
         // Header con toggle enabled
         Surface(
             color = Color.White,
@@ -310,6 +328,7 @@ fun SftpToolScreen(
                 }
             }
         )
+        }
     }
 }
 

@@ -3,6 +3,8 @@ package com.kodeforge.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -10,9 +12,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.DbConnection
+import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.SavedQuery
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.domain.usecases.DbToolUseCases
+import com.kodeforge.ui.components.ToolLayout
+import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
  * Pantalla principal del tool de base de datos.
@@ -22,7 +27,11 @@ import com.kodeforge.domain.usecases.DbToolUseCases
 fun DbToolScreen(
     workspace: Workspace,
     projectId: String,
+    project: Project,
     onWorkspaceUpdate: (Workspace) -> Unit,
+    onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
+    onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val useCases = remember { DbToolUseCases() }
@@ -31,9 +40,19 @@ fun DbToolScreen(
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Conexiones", "Queries Guardadas", "Ejecutar Query")
     
-    Column(
-        modifier = modifier.fillMaxSize()
+    ToolLayout(
+        project = project,
+        toolTitle = "Base de Datos",
+        selectedToolId = "bbdd",
+        onBack = onBack,
+        onToolClick = onToolClick,
+        onBackToHub = onBackToHub,
+        modifier = modifier
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+        
         // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
@@ -74,6 +93,7 @@ fun DbToolScreen(
                 dbTool = dbTool,
                 onWorkspaceUpdate = onWorkspaceUpdate
             )
+        }
         }
     }
 }

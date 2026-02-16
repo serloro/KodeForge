@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.smtp.SmtpServerManager
+import com.kodeforge.ui.components.ToolLayout
 import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
@@ -34,6 +35,8 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * @param workspace Workspace actual
  * @param onWorkspaceUpdate Callback para actualizar workspace
  * @param onBack Callback para volver
+ * @param onToolClick Callback para cambiar de herramienta
+ * @param onBackToHub Callback para volver al hub del proyecto
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +47,8 @@ fun ToolScreen(
     smtpServerManager: SmtpServerManager,
     onWorkspaceUpdate: (Workspace) -> Unit,
     onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
+    onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Si es "info", renderizar InfoToolScreen
@@ -53,6 +58,8 @@ fun ToolScreen(
             project = project,
             onWorkspaceUpdate = onWorkspaceUpdate,
             onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
             modifier = modifier
         )
         return
@@ -63,7 +70,11 @@ fun ToolScreen(
         RestSoapToolScreen(
             workspace = workspace,
             projectId = project.id,
+            project = project,
             onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
             modifier = modifier
         )
         return
@@ -74,8 +85,12 @@ fun ToolScreen(
         SmtpFakeToolScreen(
             workspace = workspace,
             projectId = project.id,
+            project = project,
             smtpServerManager = smtpServerManager,
             onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
             modifier = modifier
         )
         return
@@ -86,7 +101,11 @@ fun ToolScreen(
         DbToolScreen(
             workspace = workspace,
             projectId = project.id,
+            project = project,
             onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
             modifier = modifier
         )
         return
@@ -97,7 +116,11 @@ fun ToolScreen(
         SftpToolScreen(
             workspace = workspace,
             projectId = project.id,
+            project = project,
             onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
             modifier = modifier
         )
         return
@@ -111,34 +134,15 @@ fun ToolScreen(
         icon = "🔧"
     )
     
-    Column(
+    ToolLayout(
+        project = project,
+        toolTitle = toolConfig.title,
+        selectedToolId = toolType,
+        onBack = onBack,
+        onToolClick = onToolClick,
+        onBackToHub = onBackToHub,
         modifier = modifier
-            .fillMaxSize()
-            .background(KodeForgeColors.Background)
     ) {
-        // Header
-        TopAppBar(
-            title = {
-                Text(
-                    text = toolConfig.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Volver",
-                        tint = Color(0xFF1A1A1A)
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.White
-            )
-        )
-        
         // Contenido placeholder
         Column(
             modifier = Modifier

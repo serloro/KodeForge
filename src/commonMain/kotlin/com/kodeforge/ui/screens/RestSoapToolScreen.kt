@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.*
 import com.kodeforge.domain.usecases.RestSoapUseCases
+import com.kodeforge.ui.components.ToolLayout
+import com.kodeforge.ui.theme.KodeForgeColors
 import java.time.Instant
 
 /**
@@ -25,19 +28,22 @@ import java.time.Instant
 fun RestSoapToolScreen(
     workspace: Workspace,
     projectId: String,
+    project: Project,
     onWorkspaceUpdate: (Workspace) -> Unit,
+    onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
+    onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val project = workspace.projects.find { it.id == projectId }
-    val restSoapTool = project?.tools?.restSoap
+    val restSoapTool = project.tools?.restSoap
     
-    if (project == null || restSoapTool == null) {
+    if (restSoapTool == null) {
         Box(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Proyecto o tool REST/SOAP no encontrado",
+                text = "Tool REST/SOAP no encontrado",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF999999)
             )
@@ -48,9 +54,19 @@ fun RestSoapToolScreen(
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Cliente", "Capturas", "Rutas")
     
-    Column(
-        modifier = modifier.fillMaxSize()
+    ToolLayout(
+        project = project,
+        toolTitle = "REST/SOAP API",
+        selectedToolId = "rest",
+        onBack = onBack,
+        onToolClick = onToolClick,
+        onBackToHub = onBackToHub,
+        modifier = modifier
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+        
         // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
@@ -91,6 +107,7 @@ fun RestSoapToolScreen(
                 restSoapTool = restSoapTool,
                 onWorkspaceUpdate = onWorkspaceUpdate
             )
+        }
         }
     }
 }

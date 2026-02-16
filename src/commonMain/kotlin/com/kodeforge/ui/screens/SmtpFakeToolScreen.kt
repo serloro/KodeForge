@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.*
 import com.kodeforge.domain.usecases.SmtpFakeUseCases
 import com.kodeforge.smtp.SmtpServerManager
+import com.kodeforge.ui.components.ToolLayout
+import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
  * Pantalla del tool SMTP Fake con configuración e inbox.
@@ -24,33 +27,32 @@ import com.kodeforge.smtp.SmtpServerManager
 fun SmtpFakeToolScreen(
     workspace: Workspace,
     projectId: String,
+    project: Project,
     smtpServerManager: SmtpServerManager,
     onWorkspaceUpdate: (Workspace) -> Unit,
+    onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
+    onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val project = workspace.projects.find { it.id == projectId }
-    val smtpTool = project?.tools?.smtpFake
-    
-    if (project == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Proyecto no encontrado",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF999999)
-            )
-        }
-        return
-    }
+    val smtpTool = project.tools?.smtpFake
     
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Configuración", "Inbox", "Enviar")
     
-    Column(
-        modifier = modifier.fillMaxSize()
+    ToolLayout(
+        project = project,
+        toolTitle = "SMTP Fake",
+        selectedToolId = "smtp",
+        onBack = onBack,
+        onToolClick = onToolClick,
+        onBackToHub = onBackToHub,
+        modifier = modifier
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+        
         // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
@@ -92,6 +94,7 @@ fun SmtpFakeToolScreen(
                 smtpTool = smtpTool,
                 onWorkspaceUpdate = onWorkspaceUpdate
             )
+        }
         }
     }
 }

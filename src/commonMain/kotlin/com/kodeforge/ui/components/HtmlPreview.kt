@@ -72,81 +72,59 @@ private fun ColumnScope.renderHtmlContent(html: String) {
         return
     }
     
-    // Parseo simple de HTML
-    val lines = html
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-        .replace("<br />", "\n")
-        .split("\n")
+    // Parsear HTML y extraer elementos
+    val elements = parseHtmlElements(html)
     
-    for (line in lines) {
-        val trimmed = line.trim()
-        if (trimmed.isEmpty()) continue
-        
-        when {
-            // Headings
-            trimmed.startsWith("<h1>") -> {
-                val text = trimmed.removePrefix("<h1>").removeSuffix("</h1>")
+    for (element in elements) {
+        when (element.tag) {
+            "h1" -> {
                 Text(
-                    text = text,
+                    text = element.content,
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A1A)
                 )
             }
-            trimmed.startsWith("<h2>") -> {
-                val text = trimmed.removePrefix("<h2>").removeSuffix("</h2>")
+            "h2" -> {
                 Text(
-                    text = text,
+                    text = element.content,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A1A)
                 )
             }
-            trimmed.startsWith("<h3>") -> {
-                val text = trimmed.removePrefix("<h3>").removeSuffix("</h3>")
+            "h3" -> {
                 Text(
-                    text = text,
+                    text = element.content,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A1A)
                 )
             }
-            
-            // List items
-            trimmed.startsWith("<li>") -> {
-                val text = trimmed.removePrefix("<li>").removeSuffix("</li>")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("•", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        text = cleanHtmlTags(text),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF1A1A1A)
-                    )
-                }
-            }
-            
-            // Paragraph
-            trimmed.startsWith("<p>") -> {
-                val text = trimmed.removePrefix("<p>").removeSuffix("</p>")
+            "p" -> {
                 Text(
-                    text = cleanHtmlTags(text),
+                    text = element.content,
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color(0xFF1A1A1A)
                 )
             }
-            
-            // Ignore tags
-            trimmed.startsWith("<ul>") || trimmed.startsWith("</ul>") ||
-            trimmed.startsWith("<ol>") || trimmed.startsWith("</ol>") -> {
-                // Skip
+            "ul" -> {
+                // Renderizar lista
+                element.children.forEach { li ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("•", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = li.content,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color(0xFF1A1A1A)
+                        )
+                    }
+                }
             }
-            
-            // Plain text
-            else -> {
-                if (trimmed.isNotEmpty() && !trimmed.startsWith("<")) {
+            "text" -> {
+                if (element.content.isNotBlank()) {
                     Text(
-                        text = cleanHtmlTags(trimmed),
+                        text = element.content,
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF1A1A1A)
                     )
@@ -157,9 +135,140 @@ private fun ColumnScope.renderHtmlContent(html: String) {
 }
 
 /**
+ * Elemento HTML parseado.
+ */
+private data class HtmlElement(
+    val tag: String,
+    val content: String,
+    val children: List<HtmlElement> = emptyList()
+)
+
+/**
+ * Parsea HTML y extrae elementos.
+ */
+private fun parseHtmlElements(html: String): List<HtmlElement> {
+    val elements = mutableListOf<HtmlElement>()
+    var remaining = html.trim()
+    
+    while (remaining.isNotEmpty()) {
+        when {
+            // H1
+            remaining.startsWith("<h1>") -> {
+                val endIndex = remaining.indexOf("</h1>")
+                if (endIndex != -1) {
+                    val content = remaining.substring(4, endIndex)
+                    elements.add(HtmlElement("h1", cleanInlineTags(content)))
+                    remaining = remaining.substring(endIndex + 5).trim()
+                } else {
+                    break
+                }
+            }
+            // H2
+            remaining.startsWith("<h2>") -> {
+                val endIndex = remaining.indexOf("</h2>")
+                if (endIndex != -1) {
+                    val content = remaining.substring(4, endIndex)
+                    elements.add(HtmlElement("h2", cleanInlineTags(content)))
+                    remaining = remaining.substring(endIndex + 5).trim()
+                } else {
+                    break
+                }
+            }
+            // H3
+            remaining.startsWith("<h3>") -> {
+                val endIndex = remaining.indexOf("</h3>")
+                if (endIndex != -1) {
+                    val content = remaining.substring(4, endIndex)
+                    elements.add(HtmlElement("h3", cleanInlineTags(content)))
+                    remaining = remaining.substring(endIndex + 5).trim()
+                } else {
+                    break
+                }
+            }
+            // P
+            remaining.startsWith("<p>") -> {
+                val endIndex = remaining.indexOf("</p>")
+                if (endIndex != -1) {
+                    val content = remaining.substring(3, endIndex)
+                    elements.add(HtmlElement("p", cleanInlineTags(content)))
+                    remaining = remaining.substring(endIndex + 4).trim()
+                } else {
+                    break
+                }
+            }
+            // UL
+            remaining.startsWith("<ul>") -> {
+                val endIndex = remaining.indexOf("</ul>")
+                if (endIndex != -1) {
+                    val ulContent = remaining.substring(4, endIndex)
+                    val listItems = parseListItems(ulContent)
+                    elements.add(HtmlElement("ul", "", listItems))
+                    remaining = remaining.substring(endIndex + 5).trim()
+                } else {
+                    break
+                }
+            }
+            // Saltar tags desconocidos
+            remaining.startsWith("<") -> {
+                val endIndex = remaining.indexOf(">")
+                if (endIndex != -1) {
+                    remaining = remaining.substring(endIndex + 1).trim()
+                } else {
+                    break
+                }
+            }
+            // Texto plano
+            else -> {
+                val nextTagIndex = remaining.indexOf("<")
+                if (nextTagIndex != -1) {
+                    val text = remaining.substring(0, nextTagIndex).trim()
+                    if (text.isNotBlank()) {
+                        elements.add(HtmlElement("text", text))
+                    }
+                    remaining = remaining.substring(nextTagIndex).trim()
+                } else {
+                    if (remaining.isNotBlank()) {
+                        elements.add(HtmlElement("text", remaining.trim()))
+                    }
+                    break
+                }
+            }
+        }
+    }
+    
+    return elements
+}
+
+/**
+ * Parsea items de lista.
+ */
+private fun parseListItems(ulContent: String): List<HtmlElement> {
+    val items = mutableListOf<HtmlElement>()
+    var remaining = ulContent.trim()
+    
+    while (remaining.isNotEmpty()) {
+        if (remaining.startsWith("<li>")) {
+            val endIndex = remaining.indexOf("</li>")
+            if (endIndex != -1) {
+                val content = remaining.substring(4, endIndex)
+                items.add(HtmlElement("li", cleanInlineTags(content)))
+                remaining = remaining.substring(endIndex + 5).trim()
+            } else {
+                break
+            }
+        } else {
+            // Saltar otros caracteres
+            remaining = remaining.drop(1).trim()
+        }
+    }
+    
+    return items
+}
+
+/**
  * Limpia tags HTML inline (strong, em, a).
  */
-private fun cleanHtmlTags(text: String): String {
+private fun cleanInlineTags(text: String): String {
     return text
         .replace("<strong>", "")
         .replace("</strong>", "")
@@ -174,4 +283,3 @@ private fun cleanHtmlTags(text: String): String {
         .replace("<[^>]*>".toRegex(), "")
         .trim()
 }
-

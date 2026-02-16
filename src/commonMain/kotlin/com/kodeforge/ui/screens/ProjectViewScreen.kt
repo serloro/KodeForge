@@ -17,19 +17,22 @@ import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.components.ProjectStats
 import com.kodeforge.ui.components.ProjectTimeline
+import com.kodeforge.ui.components.ToolsSidebar
 import com.kodeforge.ui.components.UtilityTilesGrid
 import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
- * Vista Proyecto (Modo Proyecto) según p2.png.
+ * Vista Proyecto (Modo Proyecto) con sidebar de herramientas.
+ * 
+ * Layout responsive:
+ * - Sidebar lateral con herramientas (240dp)
+ * - Contenido central con hub del proyecto
+ * - Se adapta a diferentes tamaños de pantalla
  * 
  * Muestra:
  * 1. Header con breadcrumb
- * 2. Utilidades del Proyecto (tiles)
- * 3. Timeline del Proyecto (filas por persona)
- * 4. Estadísticas del Proyecto
- * 
- * T8: Navega a pantallas de tools al hacer click en tiles.
+ * 2. Sidebar con herramientas
+ * 3. Hub del proyecto (Timeline, Stats, etc.)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,39 +88,71 @@ fun ProjectViewScreen(
             )
         )
         
-        // Contenido scrollable
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+        // Layout responsive: Sidebar + Contenido
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // 1. Utilidades del Proyecto
-            UtilityTilesGrid(
-                onUtilityClick = { utilityId ->
-                    onToolClick(utilityId)
+            val showSidebar = maxWidth >= 800.dp
+            
+            Row(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Sidebar de herramientas (solo en pantallas grandes)
+                if (showSidebar) {
+                    ToolsSidebar(
+                        selectedToolId = null, // null = Hub del proyecto
+                        onToolClick = onToolClick,
+                        onBackToHub = { /* Ya estamos en el hub */ }
+                    )
                 }
-            )
-            
-            Divider(color = Color(0xFFE0E0E0))
-            
-            // 2. Timeline del Proyecto
-            ProjectTimeline(
-                workspace = workspace,
-                project = project
-            )
-            
-            Divider(color = Color(0xFFE0E0E0))
-            
-            // 3. Estadísticas del Proyecto
-            ProjectStats(
-                workspace = workspace,
-                project = project
-            )
-            
-            // Espaciado final
-            Spacer(Modifier.height(32.dp))
+                
+                // Contenido principal (Hub del Proyecto)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(
+                            horizontal = if (showSidebar) 24.dp else 16.dp,
+                            vertical = 16.dp
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(32.dp)
+                ) {
+                    // Título del Hub
+                    Text(
+                        text = "Hub del Proyecto",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = KodeForgeColors.TextPrimary
+                    )
+                    
+                    // 1. Utilidades del Proyecto (solo en móvil/tablet sin sidebar)
+                    if (!showSidebar) {
+                        UtilityTilesGrid(
+                            onUtilityClick = { utilityId ->
+                                onToolClick(utilityId)
+                            }
+                        )
+                        Divider(color = Color(0xFFE0E0E0))
+                    }
+                    
+                    // 2. Timeline del Proyecto
+                    ProjectTimeline(
+                        workspace = workspace,
+                        project = project
+                    )
+                    
+                    Divider(color = Color(0xFFE0E0E0))
+                    
+                    // 3. Estadísticas del Proyecto
+                    ProjectStats(
+                        workspace = workspace,
+                        project = project
+                    )
+                    
+                    // Espaciado final
+                    Spacer(Modifier.height(32.dp))
+                }
+            }
         }
     }
 }

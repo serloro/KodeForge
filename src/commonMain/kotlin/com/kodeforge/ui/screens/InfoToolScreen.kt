@@ -29,6 +29,8 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * @param project Proyecto actual
  * @param onWorkspaceUpdate Callback para actualizar workspace
  * @param onBack Callback para volver atrás
+ * @param onToolClick Callback para cambiar de herramienta
+ * @param onBackToHub Callback para volver al hub del proyecto
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +39,8 @@ fun InfoToolScreen(
     project: Project,
     onWorkspaceUpdate: (Workspace) -> Unit,
     onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
+    onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val infoUseCases = remember { InfoUseCases() }
@@ -56,31 +60,20 @@ fun InfoToolScreen(
     var pageToDelete by remember { mutableStateOf<InfoPage?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    Column(
+    ToolLayout(
+        project = project,
+        toolTitle = "Info - Documentación",
+        selectedToolId = "info",
+        onBack = onBack,
+        onToolClick = onToolClick,
+        onBackToHub = onBackToHub,
         modifier = modifier
-            .fillMaxSize()
-            .background(KodeForgeColors.Background)
     ) {
-        // Header
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Info - Documentación",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = KodeForgeColors.TextPrimary
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = KodeForgeColors.Surface,
-                titleContentColor = KodeForgeColors.TextPrimary
-            )
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(KodeForgeColors.Background)
+        ) {
         
         // Mensaje de error
         errorMessage?.let { error ->
@@ -292,6 +285,7 @@ fun InfoToolScreen(
                 }
             }
         )
+        }
     }
 }
 

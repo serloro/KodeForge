@@ -103,7 +103,11 @@ fun HomeScreen(
                     workspace = workspace,
                     smtpServerManager = smtpServerManager,
                     onWorkspaceUpdate = onWorkspaceUpdate,
-                    onBack = { currentScreen = Screen.ProjectView(project) }
+                    onBack = { currentScreen = Screen.ProjectView(project) },
+                    onToolClick = { newToolType ->
+                        currentScreen = Screen.Tool(newToolType, project)
+                    },
+                    onBackToHub = { currentScreen = Screen.ProjectView(project) }
                 )
             } else {
                 // Proyecto no encontrado, volver al home
@@ -165,10 +169,7 @@ private fun HomeMainContent(
     ) {
         // Header
         Header(
-            onNewProject = {
-                // TODO T4: Implementar creación de proyecto
-                println("Nuevo Proyecto clicked")
-            }
+            onNewProject = onManageProjects
         )
         
         // Contenido: Sidebar + Main
