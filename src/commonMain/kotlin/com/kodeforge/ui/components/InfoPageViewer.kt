@@ -23,6 +23,7 @@ import com.kodeforge.domain.model.InfoPage
  * @param selectedLocale Idioma seleccionado
  * @param onLocaleChange Callback al cambiar idioma
  * @param onCopyTranslation Callback al copiar traducción
+ * @param onSaveHtml Callback al guardar HTML editado
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,7 @@ fun InfoPageViewer(
     selectedLocale: String,
     onLocaleChange: (String) -> Unit,
     onCopyTranslation: (String, String) -> Unit,
+    onSaveHtml: (String, String, String) -> Unit, // pageId, locale, newHtml
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -89,7 +91,7 @@ fun InfoPageViewer(
             val translation = page.translations[selectedLocale]
             
             if (translation != null) {
-                // Visor HTML
+                // Editor HTML con preview
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Título de la página
                     Text(
@@ -100,8 +102,13 @@ fun InfoPageViewer(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    // Contenido HTML
-                    HtmlViewer(html = translation.html)
+                    // Editor HTML (con modo leer/editar)
+                    HtmlEditor(
+                        html = translation.html,
+                        onSave = { newHtml ->
+                            onSaveHtml(page.id, selectedLocale, newHtml)
+                        }
+                    )
                 }
             } else {
                 // Fallback: no existe traducción

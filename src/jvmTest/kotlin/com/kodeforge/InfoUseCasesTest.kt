@@ -5,6 +5,7 @@ import com.kodeforge.domain.usecases.InfoUseCases
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -333,6 +334,88 @@ class InfoUseCasesTest {
         assertEquals(2, pages[1].order)
         assertEquals("faq", pages[2].slug)
         assertEquals(3, pages[2].order)
+    }
+    
+    @Test
+    fun `updatePage - updates html and updatedAt timestamp`() {
+        // Crear página
+        val createResult = infoUseCases.createPage(
+            workspace = initialWorkspace,
+            projectId = project.id,
+            slug = "intro",
+            titleEs = "Introducción",
+            titleEn = "Introduction",
+            htmlEs = "<h1>Viejo</h1>",
+            htmlEn = "<h1>Old</h1>"
+        )
+        assertTrue(createResult.isSuccess)
+        
+        val workspace1 = createResult.getOrNull()!!
+        val page = workspace1.projects[0].tools.info?.pages?.get(0)!!
+        val originalHtmlEs = page.translations["es"]?.html
+        val originalUpdatedAtEs = page.translations["es"]?.updatedAt
+        val originalUpdatedAtEn = page.translations["en"]?.updatedAt
+        
+        // Esperar para asegurar timestamp diferente
+        Thread.sleep(10)
+        
+        // Actualizar HTML en español
+        val updateResult = infoUseCases.updatePage(
+            workspace = workspace1,
+            projectId = project.id,
+            pageId = page.id,
+            htmlEs = "<h1>Nuevo</h1><p>Contenido actualizado</p>"
+        )
+        assertTrue(updateResult.isSuccess)
+        
+        val workspace2 = updateResult.getOrNull()!!
+        val updatedPage = workspace2.projects[0].tools.info?.pages?.get(0)!!
+        
+        // Verificar HTML cambió
+        assertEquals("<h1>Nuevo</h1><p>Contenido actualizado</p>", updatedPage.translations["es"]?.html)
+        assertNotEquals(originalHtmlEs, updatedPage.translations["es"]?.html)
+        
+        // Verificar updatedAt cambió solo en español
+        assertNotEquals(originalUpdatedAtEs, updatedPage.translations["es"]?.updatedAt)
+        
+        // Verificar updatedAt en inglés NO cambió (no se modificó)
+        assertEquals(originalUpdatedAtEn, updatedPage.translations["en"]?.updatedAt)
+        
+        // Verificar HTML en inglés no cambió
+        assertEquals("<h1>Old</h1>", updatedPage.translations["en"]?.html)
+    }
+    
+    @Test
+    fun `updatePage - preserves other translations when updating one`() {
+        // Crear página con ambos idiomas
+        val createResult = infoUseCases.createPage(
+            workspace = initialWorkspace,
+            projectId = project.id,
+            slug = "test",
+            titleEs = "Prueba",
+            titleEn = "Test",
+            htmlEs = "<h1>Español</h1>",
+            htmlEn = "<h1>English</h1>"
+        )
+        val workspace1 = createResult.getOrNull()!!
+        val pageId = workspace1.projects[0].tools.info?.pages?.get(0)?.id!!
+        
+        // Actualizar solo inglés
+        val updateResult = infoUseCases.updatePage(
+            workspace = workspace1,
+            projectId = project.id,
+            pageId = pageId,
+            htmlEn = "<h1>Updated English</h1>"
+        )
+        
+        val workspace2 = updateResult.getOrNull()!!
+        val updatedPage = workspace2.projects[0].tools.info?.pages?.get(0)!!
+        
+        // Verificar inglés cambió
+        assertEquals("<h1>Updated English</h1>", updatedPage.translations["en"]?.html)
+        
+        // Verificar español no cambió
+        assertEquals("<h1>Español</h1>", updatedPage.translations["es"]?.html)
     }
 }
 

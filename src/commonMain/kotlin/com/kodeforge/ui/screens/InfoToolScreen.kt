@@ -188,6 +188,21 @@ fun InfoToolScreen(
                             }
                         }
                     }
+                },
+                onSaveHtml = { pageId, locale, newHtml ->
+                    val result = infoUseCases.updatePage(
+                        workspace = workspace,
+                        projectId = project.id,
+                        pageId = pageId,
+                        htmlEs = if (locale == "es") newHtml else null,
+                        htmlEn = if (locale == "en") newHtml else null
+                    )
+                    
+                    if (result.isSuccess) {
+                        onWorkspaceUpdate(result.getOrNull()!!)
+                    } else {
+                        errorMessage = result.exceptionOrNull()?.message
+                    }
                 }
             )
         }
