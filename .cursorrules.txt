@@ -1,0 +1,22 @@
+You are working in strict Spec-Driven Development (SDD).
+
+Source of truth:
+- specs/spec.md (business rules)
+- specs/ui.md (UI behavior + structure)
+- specs/p1.png and specs/p2.png (visual style reference only)
+- specs/tasks.md (atomic tasks)
+- specs/data-schema.json (workspace portable format)
+
+Rules:
+1) Always read spec.md + ui.md before implementing.
+2) Follow tasks.md strictly.
+3) Implement ONE task at a time.
+4) Do NOT invent new features.
+5) If something is ambiguous → propose spec modification.
+6) Images define visual layout only.
+7) Business logic always comes from spec.md.
+8) Keep JSON workspace portable and reproducible.
+9) After each task:
+   - List files changed
+   - Validate acceptance criteria
+   - Ensure project builds.

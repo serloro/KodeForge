@@ -1,0 +1,95 @@
+plugins {
+    kotlin("multiplatform") version "1.9.21"
+    kotlin("plugin.serialization") version "1.9.21"
+    id("org.jetbrains.compose") version "1.5.11"
+}
+
+group = "com.kodeforge"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()
+}
+
+kotlin {
+    jvm {
+        withJava()
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+    
+    // Targets adicionales se agregarán según necesidad
+    // macosX64()
+    // macosArm64()
+    // mingwX64()
+    // linuxX64()
+    
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+            }
+        }
+        
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        
+        val jvmMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+            }
+        }
+        
+        val jvmTest by getting {
+            dependencies {
+                implementation("org.junit.jupiter:junit-jupiter:5.10.1")
+            }
+        }
+    }
+}
+
+// Configurar aplicación ejecutable
+tasks.register<JavaExec>("runDemo") {
+    group = "application"
+    description = "Ejecuta la demostración de T0 - Workspace Portable JSON Layer"
+    dependsOn("jvmMainClasses")
+    classpath = files(
+        kotlin.jvm().compilations.getByName("main").output.allOutputs,
+        kotlin.jvm().compilations.getByName("main").runtimeDependencyFiles
+    )
+    mainClass.set("com.kodeforge.MainKt")
+    workingDir = projectDir
+}
+
+// Configurar aplicación Compose Desktop
+compose.desktop {
+    application {
+        mainClass = "com.kodeforge.ui.MainKt"
+        
+        nativeDistributions {
+            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg)
+            packageName = "KodeForge"
+            packageVersion = "1.0.0"
+            
+            macOS {
+                iconFile.set(project.file("src/jvmMain/resources/icon.icns"))
+            }
+        }
+    }
+}
+

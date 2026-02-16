@@ -1,0 +1,329 @@
+{
+  "app": {
+    "name": "KodeForge",
+    "schemaVersion": 1,
+    "createdAt": "2026-02-16T10:00:00Z",
+    "updatedAt": "2026-02-16T10:00:00Z",
+    "defaultLocale": "es",
+    "supportedLocales": ["es", "en"],
+    "settings": {
+      "workweek": {
+        "workingDays": [1, 2, 3, 4, 5],
+        "timezone": "Europe/Madrid"
+      },
+      "ui": {
+        "idleFirst": true,
+        "todayLineEnabled": true
+      }
+    }
+  },
+
+  "people": [
+    {
+      "id": "p_basso7",
+      "displayName": "Basso7",
+      "avatar": null,
+      "role": "Dev",
+      "hoursPerDay": 6,
+      "active": true,
+      "tags": ["frontend"],
+      "meta": { "createdAt": "2026-02-10T09:00:00Z" }
+    },
+    {
+      "id": "p_blancoJ",
+      "displayName": "Blanco J",
+      "avatar": null,
+      "role": "DevOps",
+      "hoursPerDay": 8,
+      "active": true,
+      "tags": ["infra"],
+      "meta": { "createdAt": "2026-02-10T09:00:00Z" }
+    },
+    {
+      "id": "p_boceraJ",
+      "displayName": "Bocera J",
+      "avatar": null,
+      "role": "QA",
+      "hoursPerDay": 4,
+      "active": true,
+      "tags": ["testing"],
+      "meta": { "createdAt": "2026-02-10T09:00:00Z" }
+    }
+  ],
+
+  "projects": [
+    {
+      "id": "pr_cloudScale",
+      "name": "Cloud Scale UI",
+      "description": "UI modernization",
+      "status": "active",
+      "members": ["p_basso7", "p_blancoJ", "p_boceraJ"],
+      "createdAt": "2026-02-11T10:00:00Z",
+      "updatedAt": "2026-02-16T10:00:00Z",
+
+      "tools": {
+        "smtpFake": {
+          "enabled": true,
+          "listenHost": "127.0.0.1",
+          "listenPort": 2525,
+          "allowedRecipients": ["dev@local.test", "qa@local.test"],
+          "storedInbox": [
+            {
+              "id": "mail_001",
+              "receivedAt": "2026-02-15T14:22:00Z",
+              "from": "noreply@local.test",
+              "to": ["dev@local.test"],
+              "subject": "Build finished",
+              "bodyText": "Your build finished successfully.",
+              "headers": { "x-env": "local" }
+            }
+          ]
+        },
+
+        "restSoap": {
+          "enabled": true,
+          "clientHistory": [
+            {
+              "id": "req_001",
+              "at": "2026-02-15T12:10:00Z",
+              "type": "REST",
+              "method": "GET",
+              "url": "https://api.local.test/health",
+              "headers": { "accept": "application/json" },
+              "body": null,
+              "response": { "status": 200, "body": "{\"ok\":true}" }
+            }
+          ],
+          "mockServer": {
+            "enabled": true,
+            "listenHost": "127.0.0.1",
+            "listenPort": 8089,
+            "mode": "catchAll",
+            "routes": [
+              {
+                "id": "route_001",
+                "method": "POST",
+                "path": "/v1/login",
+                "response": {
+                  "status": 200,
+                  "headers": { "content-type": "application/json" },
+                  "body": "{\"token\":\"fake-token\"}"
+                }
+              }
+            ],
+            "capturedRequests": [
+              {
+                "id": "cap_001",
+                "at": "2026-02-15T13:00:00Z",
+                "method": "POST",
+                "path": "/anything",
+                "headers": { "content-type": "application/json" },
+                "body": "{\"hello\":\"world\"}"
+              }
+            ]
+          }
+        },
+
+        "sftp": {
+          "enabled": false,
+          "connections": [
+            {
+              "id": "sftp_001",
+              "name": "Local SFTP",
+              "host": "127.0.0.1",
+              "port": 22,
+              "username": "demo",
+              "auth": { "type": "password", "valueRef": "secret:sftp_001" }
+            }
+          ]
+        },
+
+        "dbTools": {
+          "enabled": false,
+          "connections": [
+            {
+              "id": "db_001",
+              "name": "Postgres Local",
+              "type": "postgres",
+              "host": "127.0.0.1",
+              "port": 5432,
+              "database": "kodeforge",
+              "username": "postgres",
+              "auth": { "type": "password", "valueRef": "secret:db_001" }
+            }
+          ],
+          "savedQueries": [
+            {
+              "id": "q_001",
+              "name": "Health check",
+              "connectionId": "db_001",
+              "sql": "SELECT 1;"
+            }
+          ]
+        },
+
+        "taskManager": {
+          "enabled": true,
+          "integrations": {
+            "github": {
+              "enabled": false,
+              "repo": null,
+              "tokenRef": "secret:github"
+            }
+          }
+        },
+
+        "info": {
+          "enabled": true,
+          "pages": [
+            {
+              "id": "info_intro",
+              "slug": "intro",
+              "title": {
+                "es": "Introducción",
+                "en": "Introduction"
+              },
+              "order": 1,
+              "translations": {
+                "es": {
+                  "html": "<h1>Introducción</h1><p>Documentación del proyecto.</p><ul><li>Objetivo</li><li>Alcance</li></ul>",
+                  "updatedAt": "2026-02-15T09:00:00Z"
+                },
+                "en": {
+                  "html": "<h1>Introduction</h1><p>Project documentation.</p>",
+                  "updatedAt": "2026-02-15T09:10:00Z"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+
+  "tasks": [
+    {
+      "id": "t_001",
+      "projectId": "pr_cloudScale",
+      "title": "Implement login screen",
+      "description": "Create login page UI + validation",
+      "status": "in_progress",
+      "priority": 1,
+      "costHours": 10,
+      "doneHours": 4,
+      "assigneeId": "p_basso7",
+      "createdAt": "2026-02-12T10:00:00Z",
+      "updatedAt": "2026-02-16T09:00:00Z"
+    },
+    {
+      "id": "t_002",
+      "projectId": "pr_cloudScale",
+      "title": "Mock REST API endpoints",
+      "description": "Set up catch-all + route /v1/login",
+      "status": "todo",
+      "priority": 2,
+      "costHours": 6,
+      "doneHours": 0,
+      "assigneeId": "p_blancoJ",
+      "createdAt": "2026-02-13T10:00:00Z",
+      "updatedAt": "2026-02-16T09:00:00Z"
+    },
+    {
+      "id": "t_003",
+      "projectId": "pr_cloudScale",
+      "title": "QA test plan",
+      "description": "Define test cases for login + API mock",
+      "status": "todo",
+      "priority": 3,
+      "costHours": 4,
+      "doneHours": 0,
+      "assigneeId": "p_boceraJ",
+      "createdAt": "2026-02-14T10:00:00Z",
+      "updatedAt": "2026-02-16T09:00:00Z"
+    }
+  ],
+
+  "planning": {
+    "generatedAt": "2026-02-16T10:00:00Z",
+    "strategy": {
+      "type": "sequential",
+      "splitAcrossDays": true
+    },
+
+    "scheduleBlocks": [
+      {
+        "id": "sb_001",
+        "personId": "p_basso7",
+        "taskId": "t_001",
+        "projectId": "pr_cloudScale",
+        "date": "2026-02-16",
+        "hoursPlanned": 6
+      },
+      {
+        "id": "sb_002",
+        "personId": "p_basso7",
+        "taskId": "t_001",
+        "projectId": "pr_cloudScale",
+        "date": "2026-02-17",
+        "hoursPlanned": 0
+      },
+      {
+        "id": "sb_003",
+        "personId": "p_basso7",
+        "taskId": "t_001",
+        "projectId": "pr_cloudScale",
+        "date": "2026-02-18",
+        "hoursPlanned": 4
+      },
+
+      {
+        "id": "sb_004",
+        "personId": "p_blancoJ",
+        "taskId": "t_002",
+        "projectId": "pr_cloudScale",
+        "date": "2026-02-16",
+        "hoursPlanned": 6
+      },
+
+      {
+        "id": "sb_005",
+        "personId": "p_boceraJ",
+        "taskId": "t_003",
+        "projectId": "pr_cloudScale",
+        "date": "2026-02-16",
+        "hoursPlanned": 4
+      }
+    ]
+  },
+
+  "uiState": {
+    "selectedProjectId": "pr_cloudScale",
+    "selectedPersonId": null,
+    "lastViewed": "home",
+    "filters": {
+      "homeRangeDays": 7,
+      "projectRange": "month"
+    }
+  },
+
+  "secrets": {
+    "storageMode": "local",
+    "items": [
+      {
+        "key": "secret:sftp_001",
+        "type": "placeholder",
+        "note": "Store securely per platform; keep ref stable."
+      },
+      {
+        "key": "secret:db_001",
+        "type": "placeholder",
+        "note": "Store securely per platform; keep ref stable."
+      },
+      {
+        "key": "secret:github",
+        "type": "placeholder",
+        "note": "Store securely per platform; keep ref stable."
+      }
+    ]
+  }
+}
