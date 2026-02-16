@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.components.Header
@@ -27,6 +28,7 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * T2: Contenido del main (KPIs, gráficas, etc.)
  * T3: Navegación a ManagePeopleScreen
  * T5: Navegación a ManageTasksScreen al seleccionar proyecto
+ * T5: Navegación a PersonDetailScreen al seleccionar persona
  */
 @Composable
 fun HomeScreen(
@@ -48,8 +50,7 @@ fun HomeScreen(
                     currentScreen = Screen.ManageTasks(project)
                 },
                 onPersonClick = { person ->
-                    // TODO T5: Mostrar detalle de persona
-                    println("Persona seleccionada: ${person.displayName}")
+                    currentScreen = Screen.PersonDetail(person)
                 },
                 onManageProjects = {
                     // TODO T4: Abrir gestión de proyectos
@@ -78,6 +79,21 @@ fun HomeScreen(
                 )
             } else {
                 // Proyecto no encontrado, volver al home
+                LaunchedEffect(Unit) {
+                    currentScreen = Screen.Home
+                }
+            }
+        }
+        is Screen.PersonDetail -> {
+            val person = workspace.people.find { it.id == screen.person.id }
+            if (person != null) {
+                PersonDetailScreen(
+                    workspace = workspace,
+                    person = person,
+                    onBack = { currentScreen = Screen.Home }
+                )
+            } else {
+                // Persona no encontrada, volver al home
                 LaunchedEffect(Unit) {
                     currentScreen = Screen.Home
                 }
@@ -184,4 +200,5 @@ private sealed class Screen {
     object Home : Screen()
     object ManagePeople : Screen()
     data class ManageTasks(val project: Project) : Screen()
+    data class PersonDetail(val person: Person) : Screen()
 }
