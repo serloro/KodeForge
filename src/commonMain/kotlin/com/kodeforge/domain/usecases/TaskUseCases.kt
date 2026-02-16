@@ -27,6 +27,10 @@ class TaskUseCases {
      * 
      * @param assigneeId Si se proporciona, se asigna la tarea a esa persona
      * @return Result con el workspace actualizado o error de validación
+     * 
+     * NUEVA VALIDACIÓN (T6B):
+     * - Si hay assigneeId, debe ser miembro del proyecto
+     * - costHours > 0 obligatorio si hay assigneeId
      */
     fun createTask(
         workspace: Workspace,
@@ -38,7 +42,7 @@ class TaskUseCases {
         priority: Int = 0,
         assigneeId: String? = null
     ): Result<Workspace> {
-        // Validar datos
+        // Validar datos básicos
         val validationResult = TaskValidator.validateCreate(
             workspace = workspace,
             title = title,
@@ -51,6 +55,20 @@ class TaskUseCases {
         
         if (validationResult.isFailure) {
             return Result.failure(validationResult.exceptionOrNull()!!)
+        }
+        
+        // Validar asignación con proyecto si hay assigneeId (T6B)
+        assigneeId?.let {
+            val assignmentValidation = TaskValidator.validateAssignmentInProject(
+                workspace = workspace,
+                personId = it,
+                costHours = costHours,
+                projectId = projectId
+            )
+            
+            if (assignmentValidation.isFailure) {
+                return Result.failure(assignmentValidation.exceptionOrNull()!!)
+            }
         }
         
         // Generar ID único
@@ -159,6 +177,10 @@ class TaskUseCases {
     /**
      * Asigna una tarea a una persona.
      * Según spec: "al asignar tarea → se indica costHours" (obligatorio).
+     * 
+     * NUEVA VALIDACIÓN (T6B):
+     * - La persona debe ser miembro del proyecto
+     * - costHours > 0 obligatorio
      */
     fun assignTaskToPerson(
         workspace: Workspace,
@@ -173,11 +195,12 @@ class TaskUseCases {
         // Determinar costHours (usar el proporcionado o el existente)
         val finalCostHours = costHours ?: existingTask.costHours
         
-        // Validar asignación
-        val validationResult = TaskValidator.validateAssignment(
+        // Validar asignación CON PROYECTO (T6B)
+        val validationResult = TaskValidator.validateAssignmentInProject(
             workspace = workspace,
             personId = personId,
-            costHours = finalCostHours
+            costHours = finalCostHours,
+            projectId = existingTask.projectId
         )
         
         if (validationResult.isFailure) {

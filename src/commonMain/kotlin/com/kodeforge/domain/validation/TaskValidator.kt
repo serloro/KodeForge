@@ -24,6 +24,7 @@ object TaskValidator {
         object ProjectNotFound : ValidationError("Proyecto no encontrado")
         object PersonNotFound : ValidationError("Persona no encontrada")
         object PersonInactive : ValidationError("La persona está inactiva")
+        object PersonNotProjectMember : ValidationError("La persona asignada debe ser miembro del proyecto")
         object StatusInvalid : ValidationError("Estado inválido (debe ser: todo, in_progress, completed)")
         object PriorityInvalid : ValidationError("Prioridad debe ser mayor o igual a 0")
     }
@@ -151,6 +152,37 @@ object TaskValidator {
         // Verificar que costHours > 0 (obligatorio para asignación según spec)
         if (costHours <= 0) {
             return Result.failure(Exception(ValidationError.CostHoursRequiredForAssignment.message))
+        }
+        
+        return Result.success(Unit)
+    }
+    
+    /**
+     * Valida la asignación de una tarea a una persona dentro de un proyecto específico.
+     * 
+     * Reglas adicionales:
+     * - La persona debe ser miembro del proyecto
+     * - costHours > 0 obligatorio
+     */
+    fun validateAssignmentInProject(
+        workspace: Workspace,
+        personId: String,
+        costHours: Double,
+        projectId: String
+    ): Result<Unit> {
+        // Validaciones básicas de asignación
+        val basicValidation = validateAssignment(workspace, personId, costHours)
+        if (basicValidation.isFailure) {
+            return basicValidation
+        }
+        
+        // Verificar que el proyecto existe
+        val project = workspace.projects.find { it.id == projectId }
+            ?: return Result.failure(Exception(ValidationError.ProjectNotFound.message))
+        
+        // Verificar que la persona es miembro del proyecto
+        if (personId !in project.members) {
+            return Result.failure(Exception(ValidationError.PersonNotProjectMember.message))
         }
         
         return Result.success(Unit)

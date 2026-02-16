@@ -60,6 +60,11 @@ fun ManageTasksScreen(
         taskUseCases.getTasksByProject(workspace, project.id)
     }
     
+    // Filtrar personas: solo miembros del proyecto (T6B)
+    val projectMembers = remember(workspace.people, project.members) {
+        workspace.people.filter { person -> person.id in project.members }
+    }
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -174,7 +179,7 @@ fun ManageTasksScreen(
             ) {
                 TaskForm(
                     task = null,
-                    availablePeople = workspace.people,
+                    availablePeople = projectMembers, // Solo miembros del proyecto (T6B)
                     onSave = { title, costHours, description, status, priority, assigneeId ->
                         val result = taskUseCases.createTask(
                             workspace = workspace,
@@ -211,7 +216,7 @@ fun ManageTasksScreen(
             ) {
                 TaskForm(
                     task = task,
-                    availablePeople = workspace.people,
+                    availablePeople = projectMembers, // Solo miembros del proyecto (T6B)
                     onSave = { title, costHours, description, status, priority, assigneeId ->
                         // Primero actualizar campos básicos
                         val updateResult = taskUseCases.updateTask(
@@ -268,7 +273,7 @@ fun ManageTasksScreen(
         Dialog(onDismissRequest = { taskToAssign = null }) {
             AssignTaskDialog(
                 task = task,
-                availablePeople = workspace.people,
+                availablePeople = projectMembers, // Solo miembros del proyecto (T6B)
                 onAssign = { personId ->
                     val result = taskUseCases.assignTaskToPerson(
                         workspace = workspace,
