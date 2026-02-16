@@ -228,5 +228,91 @@ class PlanningUseCases {
         val localDateTime = now.toLocalDateTime(TimeZone.UTC)
         return "${localDateTime.date}T${localDateTime.time}Z"
     }
+    
+    /**
+     * Detecta sobrecargas de personas en un rango de fechas.
+     * 
+     * Una persona está excedida en un día si:
+     * Σ hoursPlanned (en ese día) > person.hoursPerDay
+     * 
+     * @param workspace Workspace actual
+     * @param projectId ID del proyecto (opcional, null = todos)
+     * @param startDate Fecha de inicio del rango
+     * @param endDate Fecha de fin del rango
+     * @return Map de personId → OverloadInfo
+     */
+    fun detectOverloads(
+        workspace: Workspace,
+        projectId: String? = null,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Map<String, OverloadInfo> {
+        val overloads = mutableMapOf<String, OverloadInfo>()
+        
+        // Filtrar scheduleBlocks por proyecto si se especifica
+        val relevantBlocks = if (projectId != null) {
+            workspace.planning.scheduleBlocks.filter { it.projectId == projectId }
+        } else {
+            workspace.planning.scheduleBlocks
+        }
+        
+        // Agrupar por persona
+        val blocksByPerson = relevantBlocks.groupBy { it.personId }
+        
+        blocksByPerson.forEach { (personId, blocks) ->
+            val person = workspace.people.find { it.id == personId } ?: return@forEach
+            
+            val overloadedDates = mutableSetOf<LocalDate>()
+            val detailsByDate = mutableMapOf<LocalDate, DayOverload>()
+            
+            // Agrupar por fecha
+            val blocksByDate = blocks.groupBy { LocalDate.parse(it.date) }
+            
+            blocksByDate.forEach { (date, dayBlocks) ->
+                if (date in startDate..endDate) {
+                    val totalHours = dayBlocks.sumOf { it.hoursPlanned }
+                    
+                    if (totalHours > person.hoursPerDay) {
+                        overloadedDates.add(date)
+                        detailsByDate[date] = DayOverload(
+                            date = date,
+                            hoursPlanned = totalHours,
+                            hoursAvailable = person.hoursPerDay,
+                            excess = totalHours - person.hoursPerDay
+                        )
+                    }
+                }
+            }
+            
+            if (overloadedDates.isNotEmpty()) {
+                overloads[personId] = OverloadInfo(
+                    personId = personId,
+                    overloadedDates = overloadedDates,
+                    detailsByDate = detailsByDate
+                )
+            }
+        }
+        
+        return overloads
+    }
 }
+
+/**
+ * Información de sobrecarga de una persona.
+ */
+data class OverloadInfo(
+    val personId: String,
+    val overloadedDates: Set<LocalDate>,
+    val detailsByDate: Map<LocalDate, DayOverload>
+)
+
+/**
+ * Detalle de sobrecarga de un día específico.
+ */
+data class DayOverload(
+    val date: LocalDate,
+    val hoursPlanned: Double,
+    val hoursAvailable: Double,
+    val excess: Double
+)
 

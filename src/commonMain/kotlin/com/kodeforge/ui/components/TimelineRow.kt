@@ -1,8 +1,10 @@
 package com.kodeforge.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,11 +26,14 @@ import kotlinx.datetime.LocalDate
  * - Avatar + nombre de la persona
  * - Bloques de tareas en el timeline
  * 
+ * T7B: Si isOverloaded = true, resalta en rojo.
+ * 
  * @param person Persona
  * @param tasks Tareas asignadas a esta persona
  * @param startDate Fecha de inicio del timeline
  * @param endDate Fecha de fin del timeline
  * @param pixelsPerDay Píxeles por día en el timeline
+ * @param isOverloaded Si la persona está excedida en algún día del rango
  */
 @Composable
 fun TimelineRow(
@@ -37,13 +42,22 @@ fun TimelineRow(
     startDate: LocalDate,
     endDate: LocalDate,
     pixelsPerDay: Float,
+    isOverloaded: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val nameColor = if (isOverloaded) Color(0xFFF44336) else Color(0xFF1A1A1A)
+    val borderModifier = if (isOverloaded) {
+        Modifier.border(2.dp, Color(0xFFF44336), RoundedCornerShape(8.dp))
+    } else {
+        Modifier
+    }
+    
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .then(borderModifier),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Avatar + Nombre (ancho fijo)
@@ -68,12 +82,13 @@ fun TimelineRow(
                 )
             }
             
-            // Nombre
+            // Nombre (rojo si excedido)
             Text(
                 text = person.displayName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 13.sp,
-                color = Color(0xFF1A1A1A)
+                color = nameColor,
+                fontWeight = if (isOverloaded) FontWeight.Bold else FontWeight.Normal
             )
         }
         

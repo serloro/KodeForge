@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
+import com.kodeforge.domain.usecases.PlanningUseCases
 import kotlinx.datetime.*
 
 /**
@@ -53,6 +54,17 @@ fun ProjectTimeline(
     // Filtrar personas miembro del proyecto
     val projectMembers = remember(workspace.people, project.members) {
         workspace.people.filter { it.id in project.members }
+    }
+    
+    // Detectar sobrecargas (T7B)
+    val planningUseCases = remember { PlanningUseCases() }
+    val overloads = remember(workspace.planning.scheduleBlocks, startDate, endDate) {
+        planningUseCases.detectOverloads(
+            workspace = workspace,
+            projectId = project.id,
+            startDate = startDate,
+            endDate = endDate
+        )
     }
     
     // Calcular posición de "Hoy"
@@ -114,7 +126,8 @@ fun ProjectTimeline(
                             tasks = personTasks,
                             startDate = startDate,
                             endDate = endDate,
-                            pixelsPerDay = pixelsPerDay
+                            pixelsPerDay = pixelsPerDay,
+                            isOverloaded = person.id in overloads
                         )
                         
                         Divider(color = Color(0xFFF0F0F0))

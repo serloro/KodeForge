@@ -168,9 +168,15 @@ Personas
 
 Proyectos
 
- Vista proyecto: timeline por filas + línea “Hoy”.
+ Vista proyecto: timeline por filas + línea "Hoy".
 
- Excedidos en rojo.
+ Excedidos en rojo:
+   - Una persona está **excedida** en un día si: Σ hoursPlanned (en ese día) > person.hoursPerDay
+   - Resaltado visual:
+     * Nombre de la persona en rojo (bold)
+     * Borde rojo en la fila del timeline
+     * Bloques de tareas en días excedidos en rojo
+   - Cálculo: se suman todas las hoursPlanned de los scheduleBlocks del día y se compara con hoursPerDay
 
  Asignación de personas y tareas desde proyecto.
 
