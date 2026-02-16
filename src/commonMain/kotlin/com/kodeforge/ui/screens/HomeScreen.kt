@@ -9,9 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.kodeforge.domain.model.Person
-import com.kodeforge.domain.model.Project
-import com.kodeforge.domain.model.Task
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.components.Header
 import com.kodeforge.ui.components.Sidebar
@@ -22,11 +19,12 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * 
  * Layout según specs/p1.png:
  * - Header en la parte superior
- * - Sidebar a la izquierda (240dp)
+ * - Sidebar a la izquierda (280dp)
  * - Main content a la derecha (resto del espacio)
  * 
- * T1: Solo implementa layout básico.
- * T2: Implementará el contenido del main (KPIs, gráficas, etc.)
+ * T1: Layout básico
+ * T2: Contenido del main (KPIs, gráficas, etc.)
+ * T3: Navegación a ManagePeopleScreen
  */
 @Composable
 fun HomeScreen(
@@ -35,9 +33,56 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedProjectId by remember { mutableStateOf(workspace.uiState.selectedProjectId) }
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     
+    // Determinar qué pantalla mostrar
+    when (val screen = currentScreen) {
+        is Screen.Home -> {
+            HomeMainContent(
+                workspace = workspace,
+                selectedProjectId = selectedProjectId,
+                onProjectClick = { project ->
+                    selectedProjectId = project.id
+                    // TODO T6: Cambiar a modo proyecto
+                    println("Proyecto seleccionado: ${project.name}")
+                },
+                onPersonClick = { person ->
+                    // TODO T5: Mostrar detalle de persona
+                    println("Persona seleccionada: ${person.displayName}")
+                },
+                onManageProjects = {
+                    // TODO T4: Abrir gestión de proyectos
+                    println("Gestionar Proyectos clicked")
+                },
+                onManagePeople = {
+                    currentScreen = Screen.ManagePeople
+                }
+            )
+        }
+        is Screen.ManagePeople -> {
+            ManagePeopleScreen(
+                workspace = workspace,
+                onWorkspaceUpdate = onWorkspaceUpdate,
+                onBack = { currentScreen = Screen.Home }
+            )
+        }
+    }
+}
+
+/**
+ * Contenido principal del Home (sidebar + main content).
+ */
+@Composable
+private fun HomeMainContent(
+    workspace: Workspace,
+    selectedProjectId: String?,
+    onProjectClick: (com.kodeforge.domain.model.Project) -> Unit,
+    onPersonClick: (com.kodeforge.domain.model.Person) -> Unit,
+    onManageProjects: () -> Unit,
+    onManagePeople: () -> Unit
+) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(KodeForgeColors.Background)
     ) {
@@ -51,8 +96,7 @@ fun HomeScreen(
         
         // Contenido: Sidebar + Main
         Row(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
             // Sidebar
             Sidebar(
@@ -60,26 +104,13 @@ fun HomeScreen(
                 people = workspace.people,
                 tasks = workspace.tasks,
                 selectedProjectId = selectedProjectId,
-                onProjectClick = { project ->
-                    selectedProjectId = project.id
-                    // TODO T6: Cambiar a modo proyecto
-                    println("Proyecto seleccionado: ${project.name}")
-                },
-                onPersonClick = { person ->
-                    // TODO T3: Mostrar detalle de persona
-                    println("Persona seleccionada: ${person.displayName}")
-                },
-                onManageProjects = {
-                    // TODO T4: Abrir gestión de proyectos
-                    println("Gestionar Proyectos clicked")
-                },
-                onManagePeople = {
-                    // TODO T3: Abrir gestión de personas
-                    println("Gestionar Personas clicked")
-                }
+                onProjectClick = onProjectClick,
+                onPersonClick = onPersonClick,
+                onManageProjects = onManageProjects,
+                onManagePeople = onManagePeople
             )
             
-            // Main Content Area
+            // Main Content Area (placeholder para T2)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -87,7 +118,6 @@ fun HomeScreen(
                     .padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Placeholder para T2
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -130,3 +160,10 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Sealed class para representar las diferentes pantallas.
+ */
+private sealed class Screen {
+    object Home : Screen()
+    object ManagePeople : Screen()
+}
