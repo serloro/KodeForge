@@ -53,8 +53,7 @@ fun HomeScreen(
                     currentScreen = Screen.PersonDetail(person)
                 },
                 onManageProjects = {
-                    // TODO T4: Abrir gestión de proyectos
-                    println("Gestionar Proyectos clicked")
+                    currentScreen = Screen.ManageProjects
                 },
                 onManagePeople = {
                     currentScreen = Screen.ManagePeople
@@ -63,6 +62,13 @@ fun HomeScreen(
         }
         is Screen.ManagePeople -> {
             ManagePeopleScreen(
+                workspace = workspace,
+                onWorkspaceUpdate = onWorkspaceUpdate,
+                onBack = { currentScreen = Screen.Home }
+            )
+        }
+        is Screen.ManageProjects -> {
+            ManageProjectsScreen(
                 workspace = workspace,
                 onWorkspaceUpdate = onWorkspaceUpdate,
                 onBack = { currentScreen = Screen.Home }
@@ -199,6 +205,7 @@ private fun HomeMainContent(
 private sealed class Screen {
     object Home : Screen()
     object ManagePeople : Screen()
+    object ManageProjects : Screen()
     data class ManageTasks(val project: Project) : Screen()
     data class PersonDetail(val person: Person) : Screen()
 }
