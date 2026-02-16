@@ -80,7 +80,25 @@ fun HomeScreen(
                 ProjectViewScreen(
                     workspace = workspace,
                     project = project,
-                    onBack = { currentScreen = Screen.Home }
+                    onBack = { currentScreen = Screen.Home },
+                    onToolClick = { toolType ->
+                        currentScreen = Screen.Tool(toolType, project)
+                    }
+                )
+            } else {
+                // Proyecto no encontrado, volver al home
+                LaunchedEffect(Unit) {
+                    currentScreen = Screen.Home
+                }
+            }
+        }
+        is Screen.Tool -> {
+            val project = workspace.projects.find { it.id == screen.project.id }
+            if (project != null) {
+                ToolScreen(
+                    toolType = screen.toolType,
+                    project = project,
+                    onBack = { currentScreen = Screen.ProjectView(project) }
                 )
             } else {
                 // Proyecto no encontrado, volver al home
@@ -224,4 +242,5 @@ private sealed class Screen {
     data class ProjectView(val project: Project) : Screen()
     data class ManageTasks(val project: Project) : Screen()
     data class PersonDetail(val person: Person) : Screen()
+    data class Tool(val toolType: String, val project: Project) : Screen()
 }

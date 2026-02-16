@@ -29,7 +29,7 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * 3. Timeline del Proyecto (filas por persona)
  * 4. Estadísticas del Proyecto
  * 
- * NO implementa lógica de tools (solo UI).
+ * T8: Navega a pantallas de tools al hacer click en tiles.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +37,7 @@ fun ProjectViewScreen(
     workspace: Workspace,
     project: Project,
     onBack: () -> Unit,
+    onToolClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -95,8 +96,7 @@ fun ProjectViewScreen(
             // 1. Utilidades del Proyecto
             UtilityTilesGrid(
                 onUtilityClick = { utilityId ->
-                    // TODO: Abrir pantalla de utilidad
-                    println("Utilidad clicked: $utilityId")
+                    onToolClick(utilityId)
                 }
             )
             
