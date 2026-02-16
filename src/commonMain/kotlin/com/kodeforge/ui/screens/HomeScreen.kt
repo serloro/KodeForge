@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.components.Header
 import com.kodeforge.ui.components.Sidebar
@@ -25,6 +26,7 @@ import com.kodeforge.ui.theme.KodeForgeColors
  * T1: Layout básico
  * T2: Contenido del main (KPIs, gráficas, etc.)
  * T3: Navegación a ManagePeopleScreen
+ * T5: Navegación a ManageTasksScreen al seleccionar proyecto
  */
 @Composable
 fun HomeScreen(
@@ -43,8 +45,7 @@ fun HomeScreen(
                 selectedProjectId = selectedProjectId,
                 onProjectClick = { project ->
                     selectedProjectId = project.id
-                    // TODO T6: Cambiar a modo proyecto
-                    println("Proyecto seleccionado: ${project.name}")
+                    currentScreen = Screen.ManageTasks(project)
                 },
                 onPersonClick = { person ->
                     // TODO T5: Mostrar detalle de persona
@@ -65,6 +66,22 @@ fun HomeScreen(
                 onWorkspaceUpdate = onWorkspaceUpdate,
                 onBack = { currentScreen = Screen.Home }
             )
+        }
+        is Screen.ManageTasks -> {
+            val project = workspace.projects.find { it.id == screen.project.id }
+            if (project != null) {
+                ManageTasksScreen(
+                    workspace = workspace,
+                    project = project,
+                    onWorkspaceUpdate = onWorkspaceUpdate,
+                    onBack = { currentScreen = Screen.Home }
+                )
+            } else {
+                // Proyecto no encontrado, volver al home
+                LaunchedEffect(Unit) {
+                    currentScreen = Screen.Home
+                }
+            }
         }
     }
 }
@@ -166,4 +183,5 @@ private fun HomeMainContent(
 private sealed class Screen {
     object Home : Screen()
     object ManagePeople : Screen()
+    data class ManageTasks(val project: Project) : Screen()
 }
