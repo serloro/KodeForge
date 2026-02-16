@@ -56,6 +56,17 @@ fun ToolScreen(
         return
     }
     
+    // Si es "rest", renderizar RestSoapToolScreen
+    if (toolType == "rest") {
+        RestSoapToolScreen(
+            workspace = workspace,
+            projectId = project.id,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            modifier = modifier
+        )
+        return
+    }
+    
     // Para otros tools, mostrar placeholder
     val toolConfig = toolConfigs[toolType] ?: ToolConfig(
         id = toolType,
