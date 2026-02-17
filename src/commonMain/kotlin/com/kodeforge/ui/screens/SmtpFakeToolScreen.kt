@@ -35,7 +35,19 @@ fun SmtpFakeToolScreen(
     onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val smtpTool = project.tools?.smtpFake
+    // Inicializar el tool si no existe
+    val smtpTool = project.tools?.smtpFake ?: SmtpFakeTool(enabled = false)
+    
+    // Si el tool no estaba inicializado, actualizarlo en el workspace
+    if (project.tools?.smtpFake == null) {
+        val updatedProject = project.copy(
+            tools = (project.tools ?: ProjectTools()).copy(smtpFake = smtpTool)
+        )
+        val updatedWorkspace = workspace.copy(
+            projects = workspace.projects.map { if (it.id == project.id) updatedProject else it }
+        )
+        onWorkspaceUpdate(updatedWorkspace)
+    }
     
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Configuración", "Inbox", "Enviar")

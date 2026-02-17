@@ -59,12 +59,13 @@ fun KodeForgeApp() {
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                // Intentar cargar workspace.json, si no existe cargar el schema inicial
+                // Intentar cargar workspace.json
                 workspace = try {
                     repository.load("workspace.json")
                 } catch (e: Exception) {
-                    println("workspace.json no encontrado, cargando schema inicial...")
-                    repository.loadInitialSchema("specs/data-schema.json")
+                    println("workspace.json no encontrado, creando workspace inicial...")
+                    // Si no existe, crear uno vacío por defecto
+                    repository.createDefaultWorkspace()
                 }
             } catch (e: Exception) {
                 error = "Error al cargar workspace: ${e.message}"

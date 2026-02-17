@@ -1,6 +1,6 @@
 package com.kodeforge.data.repository
 
-import com.kodeforge.domain.model.Workspace
+import com.kodeforge.domain.model.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -74,6 +74,41 @@ class WorkspaceRepository(
      */
     suspend fun loadInitialSchema(schemaPath: String = "specs/data-schema.json"): Workspace {
         return load(schemaPath)
+    }
+    
+    /**
+     * Crea un workspace por defecto cuando no existe ningún archivo.
+     * Útil para primera ejecución en instalaciones empaquetadas.
+     */
+    suspend fun createDefaultWorkspace(): Workspace {
+        val defaultWorkspace = Workspace(
+            app = AppMetadata(
+                name = "KodeForge",
+                schemaVersion = 1,
+                createdAt = kotlinx.datetime.Clock.System.now().toString(),
+                updatedAt = kotlinx.datetime.Clock.System.now().toString()
+            ),
+            people = emptyList(),
+            projects = emptyList(),
+            tasks = emptyList(),
+            planning = Planning(
+                scheduleBlocks = emptyList()
+            ),
+            uiState = UiState(
+                selectedProjectId = null
+            )
+        )
+        
+        // Intentar guardar el workspace por defecto
+        try {
+            save("workspace.json", defaultWorkspace)
+            println("✅ Workspace por defecto creado en workspace.json")
+        } catch (e: Exception) {
+            println("⚠️ No se pudo guardar el workspace: ${e.message}")
+            // Continuar de todas formas - el workspace se guardará cuando el usuario haga cambios
+        }
+        
+        return defaultWorkspace
     }
 }
 

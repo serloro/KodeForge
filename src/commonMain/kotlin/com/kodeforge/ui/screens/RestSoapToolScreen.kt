@@ -35,20 +35,18 @@ fun RestSoapToolScreen(
     onBackToHub: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val restSoapTool = project.tools?.restSoap
+    // Inicializar el tool si no existe
+    val restSoapTool = project.tools?.restSoap ?: RestSoapTool(enabled = true)
     
-    if (restSoapTool == null) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Tool REST/SOAP no encontrado",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF999999)
-            )
-        }
-        return
+    // Si el tool no estaba inicializado, actualizarlo en el workspace
+    if (project.tools?.restSoap == null) {
+        val updatedProject = project.copy(
+            tools = (project.tools ?: ProjectTools()).copy(restSoap = restSoapTool)
+        )
+        val updatedWorkspace = workspace.copy(
+            projects = workspace.projects.map { if (it.id == project.id) updatedProject else it }
+        )
+        onWorkspaceUpdate(updatedWorkspace)
     }
     
     var selectedTab by remember { mutableStateOf(0) }
