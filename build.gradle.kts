@@ -12,6 +12,8 @@ repositories {
 }
 
 kotlin {
+    jvmToolchain(17)
+
     jvm {
         withJava()
         testRuns["test"].executionTask.configure {
@@ -100,10 +102,23 @@ compose.desktop {
         mainClass = "com.kodeforge.ui.MainKt"
         
         nativeDistributions {
-            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg)
+            targetFormats(
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
+            )
             packageName = "KodeForge"
             packageVersion = "1.0.0"
-            
+            description = "KodeForge - Herramienta de desarrollo multiplataforma"
+            vendor = "KodeForge"
+
+            windows {
+                // Configuración específica para Windows
+                menuGroup = "KodeForge"
+                perUserInstall = true
+                // iconFile.set(project.file("src/jvmMain/resources/icon.ico"))
+            }
+
             macOS {
                 iconFile.set(project.file("src/jvmMain/resources/icon.icns"))
             }
