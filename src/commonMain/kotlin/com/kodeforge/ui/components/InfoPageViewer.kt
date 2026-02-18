@@ -102,8 +102,8 @@ fun InfoPageViewer(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    // Editor HTML (con modo leer/editar)
-                    HtmlEditor(
+                    // Editor WYSIWYG custom (con modo leer/editar)
+                    RichHtmlEditor(
                         html = translation.html,
                         onSave = { newHtml ->
                             onSaveHtml(page.id, selectedLocale, newHtml)

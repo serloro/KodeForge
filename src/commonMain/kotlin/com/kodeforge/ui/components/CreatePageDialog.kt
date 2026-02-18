@@ -12,19 +12,17 @@ import androidx.compose.ui.unit.dp
  * Diálogo para crear una nueva página Info.
  * 
  * Campos:
- * - Slug (URL amigable)
  * - Título en español
  * - Título en inglés
  * 
  * @param onDismiss Callback al cancelar
- * @param onConfirm Callback al confirmar (slug, titleEs, titleEn)
+ * @param onConfirm Callback al confirmar (titleEs, titleEn)
  */
 @Composable
 fun CreatePageDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit
+    onConfirm: (String, String) -> Unit
 ) {
-    var slug by remember { mutableStateOf("") }
     var titleEs by remember { mutableStateOf("") }
     var titleEn by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -41,26 +39,6 @@ fun CreatePageDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Slug
-                OutlinedTextField(
-                    value = slug,
-                    onValueChange = { 
-                        slug = it.lowercase().replace(" ", "-")
-                        errorMessage = null
-                    },
-                    label = { Text("Slug (URL)") },
-                    placeholder = { Text("ej: introduccion, api-reference") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    supportingText = {
-                        Text(
-                            text = "Solo letras minúsculas, números y guiones",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF666666)
-                        )
-                    }
-                )
-                
                 // Título español
                 OutlinedTextField(
                     value = titleEs,
@@ -101,10 +79,9 @@ fun CreatePageDialog(
             Button(
                 onClick = {
                     when {
-                        slug.isBlank() -> errorMessage = "El slug es obligatorio"
                         titleEs.isBlank() -> errorMessage = "El título en español es obligatorio"
                         titleEn.isBlank() -> errorMessage = "El título en inglés es obligatorio"
-                        else -> onConfirm(slug, titleEs, titleEn)
+                        else -> onConfirm(titleEs, titleEn)
                     }
                 }
             ) {

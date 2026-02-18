@@ -37,14 +37,23 @@ class InfoUseCases {
         htmlEn: String = ""
     ): Result<Workspace> {
         try {
+            // Si no se proporciona slug, lo generamos a partir del título (ES preferente)
+            val baseSlug = if (slug.isBlank()) {
+                slugify(titleEs.ifBlank { titleEn })
+            } else {
+                slug
+            }
+
+            val finalSlug = ensureUniqueSlug(workspace, projectId, baseSlug)
+
             // Validar slug
-            val slugValidation = InfoValidator.validateSlug(slug)
+            val slugValidation = InfoValidator.validateSlug(finalSlug)
             if (slugValidation.isFailure) {
                 return Result.failure(slugValidation.exceptionOrNull()!!)
             }
             
             // Validar unicidad de slug
-            val uniqueValidation = InfoValidator.validateSlugUnique(workspace, projectId, slug)
+            val uniqueValidation = InfoValidator.validateSlugUnique(workspace, projectId, finalSlug)
             if (uniqueValidation.isFailure) {
                 return Result.failure(uniqueValidation.exceptionOrNull()!!)
             }
@@ -78,7 +87,7 @@ class InfoUseCases {
             val timestamp = generateTimestamp()
             val newPage = InfoPage(
                 id = generateId("info"),
-                slug = slug,
+                slug = finalSlug,
                 title = mapOf(
                     "es" to titleEs,
                     "en" to titleEn
@@ -410,6 +419,47 @@ class InfoUseCases {
         val now = Clock.System.now()
         val localDateTime = now.toLocalDateTime(TimeZone.UTC)
         return "${localDateTime.date}T${localDateTime.time}Z"
+    }
+
+    /**
+     * Convierte un título a un slug sencillo (minúsculas, números y guiones).
+     * Nota: es intencionadamente simple y multiplataforma.
+     */
+    private fun slugify(input: String): String {
+        val raw = input.trim().lowercase()
+        // Normalización básica (sin depender de java.text.Normalizer, que no es commonMain)
+        val replacedAccents = raw
+            .replace('á', 'a').replace('à', 'a').replace('ä', 'a').replace('â', 'a')
+            .replace('é', 'e').replace('è', 'e').replace('ë', 'e').replace('ê', 'e')
+            .replace('í', 'i').replace('ì', 'i').replace('ï', 'i').replace('î', 'i')
+            .replace('ó', 'o').replace('ò', 'o').replace('ö', 'o').replace('ô', 'o')
+            .replace('ú', 'u').replace('ù', 'u').replace('ü', 'u').replace('û', 'u')
+            .replace('ñ', 'n')
+
+        val cleaned = replacedAccents
+            .replace(Regex("[^a-z0-9\\s-]"), "")
+            .replace(Regex("\\s+"), "-")
+            .replace(Regex("-+"), "-")
+            .trim('-')
+
+        return cleaned.ifBlank { "page" }
+    }
+
+    /**
+     * Asegura que el slug sea único dentro del proyecto. Si ya existe, añade sufijos -2, -3, ...
+     */
+    private fun ensureUniqueSlug(workspace: Workspace, projectId: String, baseSlug: String): String {
+        val project = workspace.projects.find { it.id == projectId }
+        val existing = project?.tools?.info?.pages?.map { it.slug }?.toSet() ?: emptySet()
+
+        if (baseSlug !in existing) return baseSlug
+
+        var i = 2
+        while (true) {
+            val candidate = "$baseSlug-$i"
+            if (candidate !in existing) return candidate
+            i++
+        }
     }
 }
 

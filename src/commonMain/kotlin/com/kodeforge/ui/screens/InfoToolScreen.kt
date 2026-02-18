@@ -205,11 +205,11 @@ fun InfoToolScreen(
     if (showCreateDialog) {
         CreatePageDialog(
             onDismiss = { showCreateDialog = false },
-            onConfirm = { slug, titleEs, titleEn ->
+            onConfirm = { titleEs, titleEn ->
                 val result = infoUseCases.createPage(
                     workspace = workspace,
                     projectId = project.id,
-                    slug = slug,
+                    slug = "", // se generará automáticamente a partir del título
                     titleEs = titleEs,
                     titleEn = titleEn,
                     htmlEs = "<h1>$titleEs</h1><p>Contenido de la página...</p>",
