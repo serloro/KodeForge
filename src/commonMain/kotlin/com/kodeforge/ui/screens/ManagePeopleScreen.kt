@@ -183,7 +183,7 @@ fun ManagePeopleScreen(
                     person = null,
                     availableProjects = workspace.projects,
                     currentProjectIds = emptyList(),
-                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active, projectIds ->
+                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active, projectIds, avatar ->
                         val result = personUseCases.createPerson(
                             workspace = workspace,
                             displayName = displayName,
@@ -191,7 +191,8 @@ fun ManagePeopleScreen(
                             hoursPerWeekday = hoursPerWeekday,
                             role = role,
                             tags = tags,
-                            active = active
+                            active = active,
+                            avatar = avatar
                         )
                         
                         result.onSuccess { updatedWorkspace ->
@@ -238,7 +239,7 @@ fun ManagePeopleScreen(
                     person = person,
                     availableProjects = workspace.projects,
                     currentProjectIds = workspace.projects.filter { person.id in it.members }.map { it.id },
-                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active, projectIds ->
+                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active, projectIds, avatar ->
                         val result = personUseCases.updatePerson(
                             workspace = workspace,
                             personId = person.id,
@@ -248,7 +249,8 @@ fun ManagePeopleScreen(
                             updateWeekdayHours = true,
                             role = role,
                             tags = tags,
-                            active = active
+                            active = active,
+                            avatar = avatar
                         )
                         
                         result.onSuccess { updatedWorkspace ->

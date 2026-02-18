@@ -1,12 +1,20 @@
 package com.kodeforge.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 
@@ -26,7 +34,7 @@ fun PersonForm(
     person: Person? = null, // null = crear, no null = editar
     availableProjects: List<Project> = emptyList(), // Proyectos disponibles para asignar
     currentProjectIds: List<String> = emptyList(), // IDs de proyectos ya asignados a esta persona
-    onSave: (displayName: String, hoursPerDay: Double, hoursPerWeekday: Map<Int, Double>?, role: String?, tags: List<String>, active: Boolean, projectIds: List<String>) -> Unit,
+    onSave: (displayName: String, hoursPerDay: Double, hoursPerWeekday: Map<Int, Double>?, role: String?, tags: List<String>, active: Boolean, projectIds: List<String>, avatar: String?) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -36,6 +44,8 @@ fun PersonForm(
     var tagsText by remember { mutableStateOf(person?.tags?.joinToString(", ") ?: "") }
     var active by remember { mutableStateOf(person?.active ?: true) }
     var selectedProjectIds by remember { mutableStateOf(currentProjectIds.toSet()) }
+    var avatar by remember { mutableStateOf(person?.avatar ?: "") }
+    var showAvatarDialog by remember { mutableStateOf(false) }
     
     // Configuración de horas por día de la semana
     var useWeekdayConfig by remember { mutableStateOf(person?.hoursPerWeekday != null) }
@@ -70,6 +80,51 @@ fun PersonForm(
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+        
+        // Avatar selector
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar preview
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE3F2FD))
+                    .clickable { showAvatarDialog = true },
+                contentAlignment = Alignment.Center
+            ) {
+                if (avatar.isNotEmpty()) {
+                    Text(
+                        text = avatar,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Text(
+                        text = displayName.take(1).uppercase().ifEmpty { "?" },
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2196F3)
+                    )
+                }
+            }
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Avatar",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Haz clic para seleccionar un emoji",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -348,7 +403,16 @@ fun PersonForm(
                             // Preparar hoursPerWeekday
                             val finalWeekdayHours = if (useWeekdayConfig) weekdayHours else null
                             
-                            onSave(trimmedName, hours, finalWeekdayHours, role.trim().takeIf { it.isNotEmpty() }, tags, active, selectedProjectIds.toList())
+                            onSave(
+                                trimmedName, 
+                                hours, 
+                                finalWeekdayHours, 
+                                role.trim().takeIf { it.isNotEmpty() }, 
+                                tags, 
+                                active, 
+                                selectedProjectIds.toList(),
+                                avatar.takeIf { it.isNotEmpty() }
+                            )
                         }
                     }
                 }
@@ -357,5 +421,95 @@ fun PersonForm(
             }
         }
     }
+    
+    // Diálogo de selección de avatar
+    if (showAvatarDialog) {
+        AvatarSelectorDialog(
+            currentAvatar = avatar,
+            onSelect = { 
+                avatar = it
+                showAvatarDialog = false
+            },
+            onCancel = { showAvatarDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun AvatarSelectorDialog(
+    currentAvatar: String,
+    onSelect: (String) -> Unit,
+    onCancel: () -> Unit
+) {
+    val avatars = listOf(
+        "👤", "👨", "👩", "👨‍💼", "👩‍💼", "👨‍💻", "👩‍💻", "👨‍🎨", "👩‍🎨",
+        "👨‍🔧", "👩‍🔧", "👨‍🏫", "👩‍🏫", "👨‍⚕️", "👩‍⚕️", "👨‍🔬", "👩‍🔬",
+        "🧑‍💼", "🧑‍💻", "🧑‍🎨", "🧑‍🔧", "🧑‍🏫", "🧑‍⚕️", "🧑‍🔬",
+        "😀", "😃", "😄", "😁", "😊", "🙂", "😎", "🤓", "🧐",
+        "💼", "💻", "🎨", "🔧", "📚", "🔬", "⚙️", "🚀", "⭐"
+    )
+    
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Seleccionar Avatar") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Selecciona un emoji como avatar:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                // Grid de avatares
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    avatars.chunked(6).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { emoji ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (emoji == currentAvatar) Color(0xFF2196F3).copy(alpha = 0.2f)
+                                            else Color(0xFFF5F5F5)
+                                        )
+                                        .clickable { onSelect(emoji) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = emoji,
+                                        fontSize = 24.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                // Opción de limpiar avatar
+                TextButton(
+                    onClick = { onSelect("") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Usar inicial del nombre")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onCancel) {
+                Text("Cerrar")
+            }
+        }
+    )
 }
 

@@ -145,6 +145,7 @@ fun HomeScreen(
                 PersonDetailScreen(
                     workspace = workspace,
                     person = person,
+                    onWorkspaceUpdate = onWorkspaceUpdate,
                     onBack = { currentScreen = Screen.Home }
                 )
             } else {
@@ -227,7 +228,12 @@ private fun HomeMainContent(
                     .fillMaxSize()
                     .background(KodeForgeColors.Background)
             ) {
-                HomeDashboard(workspace = workspace)
+                HomeDashboard(
+                    workspace = workspace,
+                    onProjectClick = onProjectClick,
+                    onManageProjects = onManageProjects,
+                    onManagePeople = onManagePeople
+                )
             }
         }
     }
