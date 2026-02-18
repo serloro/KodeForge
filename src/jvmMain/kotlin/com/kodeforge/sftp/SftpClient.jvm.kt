@@ -4,6 +4,8 @@ import com.jcraft.jsch.*
 import com.kodeforge.domain.model.SftpConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
@@ -196,6 +198,41 @@ actual class SftpClient {
             } catch (e: SftpException) {
                 SftpResult.Error(
                     message = "Error al leer archivo: ${e.message ?: "Desconocido"}",
+                    exception = e
+                )
+            } catch (e: Exception) {
+                SftpResult.Error(
+                    message = "Error inesperado: ${e.message ?: "Desconocido"}",
+                    exception = e
+                )
+            }
+        }
+    }
+
+    /**
+     * Descarga un archivo remoto y lo guarda en local.
+     */
+    actual suspend fun downloadFile(remotePath: String, localPath: String): SftpResult<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (channel == null || !channel!!.isConnected) {
+                    return@withContext SftpResult.Error("No hay conexión SFTP activa")
+                }
+
+                // Verificar que el archivo existe y no es un directorio
+                val attrs = channel!!.stat(remotePath)
+                if (attrs.isDir) {
+                    return@withContext SftpResult.Error("La ruta especificada es un directorio")
+                }
+
+                val outFile = File(localPath)
+                outFile.parentFile?.mkdirs()
+
+                channel!!.get(remotePath, FileOutputStream(outFile))
+                SftpResult.Success(Unit)
+            } catch (e: SftpException) {
+                SftpResult.Error(
+                    message = "Error al descargar archivo: ${e.message ?: "Desconocido"}",
                     exception = e
                 )
             } catch (e: Exception) {

@@ -36,6 +36,14 @@ expect class SftpClient() {
      * @return Result con contenido del archivo o error
      */
     suspend fun readFileAsText(path: String): SftpResult<String>
+
+    /**
+     * Descarga un archivo remoto a una ruta local.
+     *
+     * @param remotePath Ruta completa del archivo remoto
+     * @param localPath Ruta completa donde guardar el archivo en local
+     */
+    suspend fun downloadFile(remotePath: String, localPath: String): SftpResult<Unit>
     
     /**
      * Obtiene el estado actual de la conexión.

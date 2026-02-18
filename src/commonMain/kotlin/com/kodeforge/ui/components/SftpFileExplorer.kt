@@ -7,15 +7,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +22,7 @@ import com.kodeforge.sftp.RemoteFile
 import com.kodeforge.sftp.SftpClient
 import com.kodeforge.sftp.SftpConnectionState
 import com.kodeforge.sftp.SftpResult
+import com.kodeforge.platform.PlatformPaths
 import kotlinx.coroutines.launch
 
 /**
@@ -41,6 +40,8 @@ fun SftpFileExplorer(
     
     var connectionState by remember { mutableStateOf(SftpConnectionState.DISCONNECTED) }
     var currentPath by remember { mutableStateOf(".") }
+    val backStack = remember { mutableStateListOf<String>() }
+    val forwardStack = remember { mutableStateListOf<String>() }
     var files by remember { mutableStateOf<List<RemoteFile>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
@@ -48,6 +49,10 @@ fun SftpFileExplorer(
     var password by remember { mutableStateOf("") }
     var selectedFileContent by remember { mutableStateOf<String?>(null) }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
+    var selectedFile by remember { mutableStateOf<RemoteFile?>(null) }
+
+    val clipboard = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
     
     // Función para conectar
     fun connectToServer(pwd: String) {
@@ -81,13 +86,14 @@ fun SftpFileExplorer(
         }
     }
     
-    // Función para listar archivos
+    // Función para listar archivos (sin tocar histórico)
     fun listFiles(path: String) {
         scope.launch {
             isLoading = true
             errorMessage = null
             selectedFileContent = null
             selectedFileName = null
+            selectedFile = null
             
             val result = client.listFiles(path)
             
@@ -103,6 +109,27 @@ fun SftpFileExplorer(
             
             isLoading = false
         }
+    }
+
+    fun navigateTo(path: String) {
+        if (path == currentPath) return
+        backStack.add(currentPath)
+        forwardStack.clear()
+        listFiles(path)
+    }
+
+    fun navigateBack() {
+        if (backStack.isEmpty()) return
+        val prev = backStack.removeAt(backStack.lastIndex)
+        forwardStack.add(currentPath)
+        listFiles(prev)
+    }
+
+    fun navigateForward() {
+        if (forwardStack.isEmpty()) return
+        val next = forwardStack.removeAt(forwardStack.lastIndex)
+        backStack.add(currentPath)
+        listFiles(next)
     }
     
     // Función para leer archivo
@@ -126,6 +153,29 @@ fun SftpFileExplorer(
             isLoading = false
         }
     }
+
+    fun downloadFile(file: RemoteFile) {
+        scope.launch {
+            isLoading = true
+            errorMessage = null
+            val downloadsDir = PlatformPaths.downloadsDir()
+            // Nombre único simple (evita sobreescritura sin depender de APIs JVM en commonMain)
+            val base = file.name.ifEmpty { "download" }
+            val dot = base.lastIndexOf('.')
+            val name = if (dot > 0) base.substring(0, dot) else base
+            val ext = if (dot > 0) base.substring(dot) else ""
+            val suffix = kotlin.random.Random.nextInt(1000, 9999)
+            val target = "$downloadsDir/${name}-$suffix$ext"
+
+            val result = client.downloadFile(file.path, target)
+            isLoading = false
+
+            when (result) {
+                is SftpResult.Success -> snackbarHostState.showSnackbar("Descargado en: $target")
+                is SftpResult.Error -> errorMessage = result.message
+            }
+        }
+    }
     
     // Función para navegar hacia atrás
     fun navigateUp() {
@@ -135,7 +185,7 @@ fun SftpFileExplorer(
             } else {
                 "."
             }
-            listFiles(parentPath)
+            navigateTo(parentPath)
         }
     }
     
@@ -157,99 +207,101 @@ fun SftpFileExplorer(
         }
     }
     
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // Header
-        Surface(
-            color = Color(0xFF1976D2),
-            shadowElevation = 4.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = connection.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "${connection.username}@${connection.host}:${connection.port}",
-                        fontSize = 13.sp,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                }
-                
-                IconButton(
-                    onClick = {
-                        client.disconnect()
-                        onClose()
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+                Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                    // Línea 1: conexión + cerrar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = connection.name,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${connection.username}@${connection.host}:${connection.port}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                client.disconnect()
+                                onClose()
+                            }
+                        ) {
+                            Text("✕")
+                        }
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cerrar",
-                        tint = Color.White
-                    )
+
+                    // Línea 2: navegación + acciones + breadcrumb
+                    if (connectionState == SftpConnectionState.CONNECTED) {
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            IconButton(onClick = { navigateBack() }, enabled = backStack.isNotEmpty()) {
+                                Text("←")
+                            }
+                            IconButton(onClick = { navigateForward() }, enabled = forwardStack.isNotEmpty()) {
+                                Text("→")
+                            }
+                            IconButton(onClick = { navigateUp() }, enabled = currentPath != "." && currentPath.isNotEmpty()) {
+                                Text("↑")
+                            }
+
+                            IconButton(onClick = { listFiles(currentPath) }) {
+                                Text("⟳")
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    selectedFile?.let { if (!it.isDirectory) downloadFile(it) }
+                                },
+                                enabled = selectedFile != null && selectedFile?.isDirectory == false
+                            ) {
+                                Text("⬇")
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    selectedFile?.let { clipboard.setText(AnnotatedString(it.path)) }
+                                    scope.launch { snackbarHostState.showSnackbar("Ruta copiada") }
+                                },
+                                enabled = selectedFile != null
+                            ) {
+                                Text("⧉")
+                            }
+
+                            Spacer(Modifier.width(8.dp))
+
+                            PathBreadcrumb(
+                                path = currentPath,
+                                onNavigateTo = { navigateTo(it) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
         }
-        
-        // Barra de navegación
-        if (connectionState == SftpConnectionState.CONNECTED) {
-            Surface(
-                color = Color(0xFFF5F5F5),
-                shadowElevation = 1.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { navigateUp() },
-                        enabled = currentPath != "." && currentPath.isNotEmpty()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Atrás"
-                        )
-                    }
-                    
-                    Text(
-                        text = if (currentPath == ".") "~" else currentPath,
-                        fontSize = 14.sp,
-                        color = Color(0xFF212121),
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    IconButton(
-                        onClick = { listFiles(currentPath) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refrescar"
-                        )
-                    }
-                }
-            }
-        }
-        
+    ) { padding ->
         // Contenido
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFFAFAFA))
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when {
                 // Mostrando contenido de archivo
@@ -364,16 +416,23 @@ fun SftpFileExplorer(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(files) { file ->
+                        // Important: provide a stable key so remembered state inside each row
+                        // (e.g., context menu expanded) doesn't get mismatched across recompositions.
+                        items(items = files, key = { it.path }) { file ->
                             RemoteFileItem(
                                 file = file,
-                                onClick = {
+                                selected = selectedFile?.path == file.path,
+                                onSelect = { selectedFile = file },
+                                onOpen = {
+                                    selectedFile = file
                                     if (file.isDirectory) {
-                                        listFiles(file.path)
+                                        navigateTo(file.path)
                                     } else {
                                         readFile(file)
                                     }
-                                }
+                                },
+                                onDownload = if (!file.isDirectory) ({ downloadFile(file) }) else null,
+                                onCopyPath = { clipboard.setText(AnnotatedString(file.path)) }
                             )
                         }
                     }
@@ -445,6 +504,45 @@ fun SftpFileExplorer(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun PathBreadcrumb(
+    path: String,
+    onNavigateTo: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cleaned = path.trim().trimEnd('/')
+    val parts: List<String> = when {
+        cleaned.isEmpty() || cleaned == "." -> emptyList()
+        cleaned == "~" -> emptyList()
+        else -> cleaned.split('/').filter { it.isNotBlank() }
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        TextButton(
+            onClick = { onNavigateTo(".") },
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text("~", fontSize = 12.sp)
+        }
+
+        var acc = ""
+        parts.forEachIndexed { index, part ->
+            Text("/", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            acc = if (acc.isEmpty()) part else "$acc/$part"
+            TextButton(
+                onClick = { onNavigateTo(acc) },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(part, fontSize = 12.sp, maxLines = 1)
+            }
+        }
     }
 }
 

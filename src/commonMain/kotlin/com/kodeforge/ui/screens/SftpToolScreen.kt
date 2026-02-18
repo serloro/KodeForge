@@ -50,18 +50,7 @@ fun SftpToolScreen(
     var showExplorer by remember { mutableStateOf(false) }
     var explorerConnection by remember { mutableStateOf<SftpConnection?>(null) }
     
-    // Si se está mostrando el explorador, renderizarlo
-    if (showExplorer && explorerConnection != null) {
-        SftpFileExplorer(
-            connection = explorerConnection!!,
-            onClose = {
-                showExplorer = false
-                explorerConnection = null
-            },
-            modifier = modifier
-        )
-        return
-    }
+    // El explorador se renderiza dentro del ToolLayout para que no cambie la interfaz de golpe.
     
     ToolLayout(
         project = project,
@@ -72,9 +61,19 @@ fun SftpToolScreen(
         onBackToHub = onBackToHub,
         modifier = modifier
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            if (showExplorer && explorerConnection != null) {
+                SftpFileExplorer(
+                    connection = explorerConnection!!,
+                    onClose = {
+                        showExplorer = false
+                        explorerConnection = null
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+                return@Column
+            }
         
         // Header con toggle enabled
         Surface(

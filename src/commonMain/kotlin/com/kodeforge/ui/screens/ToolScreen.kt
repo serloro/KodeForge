@@ -125,6 +125,18 @@ fun ToolScreen(
         )
         return
     }
+
+    // Si es "tasks", mostrar gestión de tareas del proyecto
+    if (toolType == "tasks") {
+        ManageTasksScreen(
+            workspace = workspace,
+            project = project,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            modifier = modifier
+        )
+        return
+    }
     
     // Para otros tools, mostrar placeholder
     val toolConfig = toolConfigs[toolType] ?: ToolConfig(
