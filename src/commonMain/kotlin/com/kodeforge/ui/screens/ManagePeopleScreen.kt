@@ -181,11 +181,12 @@ fun ManagePeopleScreen(
             ) {
                 PersonForm(
                     person = null,
-                    onSave = { displayName, hoursPerDay, role, tags, active ->
+                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active ->
                         val result = personUseCases.createPerson(
                             workspace = workspace,
                             displayName = displayName,
                             hoursPerDay = hoursPerDay,
+                            hoursPerWeekday = hoursPerWeekday,
                             role = role,
                             tags = tags,
                             active = active
@@ -215,12 +216,14 @@ fun ManagePeopleScreen(
             ) {
                 PersonForm(
                     person = person,
-                    onSave = { displayName, hoursPerDay, role, tags, active ->
+                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active ->
                         val result = personUseCases.updatePerson(
                             workspace = workspace,
                             personId = person.id,
                             displayName = displayName,
                             hoursPerDay = hoursPerDay,
+                            hoursPerWeekday = hoursPerWeekday,
+                            updateWeekdayHours = true,
                             role = role,
                             tags = tags,
                             active = active

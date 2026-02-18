@@ -126,13 +126,15 @@ fun ToolScreen(
         return
     }
 
-    // Si es "tasks", mostrar gestión de tareas del proyecto
+    // Si es "tasks", mostrar tablón de tareas del proyecto
     if (toolType == "tasks") {
-        ManageTasksScreen(
+        TasksBoardScreen(
             workspace = workspace,
             project = project,
             onWorkspaceUpdate = onWorkspaceUpdate,
             onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
             modifier = modifier
         )
         return

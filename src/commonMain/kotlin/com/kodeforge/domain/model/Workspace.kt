@@ -43,6 +43,26 @@ data class WorkweekSettings(
 @Serializable
 data class UiSettings(
     val idleFirst: Boolean = true,
-    val todayLineEnabled: Boolean = true
+    val todayLineEnabled: Boolean = true,
+    val taskStatuses: List<TaskStatus> = defaultTaskStatuses()
+)
+
+@Serializable
+data class TaskStatus(
+    val id: String,
+    val label: String,
+    val color: String, // Hex color
+    val order: Int
+)
+
+/**
+ * Estados de tareas por defecto.
+ */
+fun defaultTaskStatuses(): List<TaskStatus> = listOf(
+    TaskStatus(id = "backlog", label = "Backlog", color = "#9E9E9E", order = 0),
+    TaskStatus(id = "in_progress", label = "In Progress", color = "#2196F3", order = 1),
+    TaskStatus(id = "in_review", label = "In Review", color = "#FF9800", order = 2),
+    TaskStatus(id = "testing", label = "Testing", color = "#9C27B0", order = 3),
+    TaskStatus(id = "done", label = "Done", color = "#4CAF50", order = 4)
 )
 

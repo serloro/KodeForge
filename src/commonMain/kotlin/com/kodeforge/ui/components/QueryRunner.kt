@@ -24,6 +24,7 @@ fun QueryRunner(
     projectId: String,
     connections: List<DbConnection>,
     initialConnectionId: String? = null,
+    preselectedConnectionId: String? = null,
     initialSql: String = "",
     onWorkspaceUpdate: (Workspace) -> Unit,
     modifier: Modifier = Modifier
@@ -32,7 +33,7 @@ fun QueryRunner(
     val queryExecutor = remember { QueryExecutor() }
     val scope = rememberCoroutineScope()
     
-    var selectedConnectionId by remember { mutableStateOf(initialConnectionId ?: connections.firstOrNull()?.id ?: "") }
+    var selectedConnectionId by remember { mutableStateOf(preselectedConnectionId ?: initialConnectionId ?: connections.firstOrNull()?.id ?: "") }
     var sql by remember { mutableStateOf(initialSql) }
     var isExecuting by remember { mutableStateOf(false) }
     var queryResult by remember { mutableStateOf<QueryResult?>(null) }

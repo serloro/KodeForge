@@ -15,6 +15,7 @@ import com.kodeforge.domain.model.Person
  * Según spec.md:
  * - displayName: REQUIRED
  * - hoursPerDay: REQUIRED, > 0
+ * - hoursPerWeekday: opcional, horas por día de la semana
  * - role: opcional
  * - tags: opcional
  * - active: default true
@@ -22,7 +23,7 @@ import com.kodeforge.domain.model.Person
 @Composable
 fun PersonForm(
     person: Person? = null, // null = crear, no null = editar
-    onSave: (displayName: String, hoursPerDay: Double, role: String?, tags: List<String>, active: Boolean) -> Unit,
+    onSave: (displayName: String, hoursPerDay: Double, hoursPerWeekday: Map<Int, Double>?, role: String?, tags: List<String>, active: Boolean) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -31,6 +32,14 @@ fun PersonForm(
     var role by remember { mutableStateOf(person?.role ?: "") }
     var tagsText by remember { mutableStateOf(person?.tags?.joinToString(", ") ?: "") }
     var active by remember { mutableStateOf(person?.active ?: true) }
+    
+    // Configuración de horas por día de la semana
+    var useWeekdayConfig by remember { mutableStateOf(person?.hoursPerWeekday != null) }
+    val weekdayNames = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+    val defaultWeekdayHours = mapOf(1 to 7.0, 2 to 7.0, 3 to 7.0, 4 to 7.0, 5 to 7.0, 6 to 0.0, 7 to 0.0)
+    var weekdayHours by remember { 
+        mutableStateOf(person?.hoursPerWeekday ?: defaultWeekdayHours)
+    }
     
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
@@ -88,7 +97,7 @@ fun PersonForm(
                     errorMessage = null
                 }
             },
-            label = { Text("Horas por día *") },
+            label = { Text("Horas por día (por defecto) *") },
             placeholder = { Text("ej: 8") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -105,6 +114,75 @@ fun PersonForm(
             },
             modifier = Modifier.fillMaxWidth()
         )
+        
+        // Checkbox: Configurar horas por día de la semana
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Checkbox(
+                checked = useWeekdayConfig,
+                onCheckedChange = { useWeekdayConfig = it }
+            )
+            Text(
+                text = "Configurar horas específicas por día de la semana",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
+        
+        // Configuración de horas por día de la semana
+        if (useWeekdayConfig) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Horas por día de la semana",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    
+                    weekdayNames.forEachIndexed { index, dayName ->
+                        val dayNumber = index + 1
+                        val currentHours = weekdayHours[dayNumber]?.toString() ?: "0"
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = dayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.width(100.dp)
+                            )
+                            
+                            OutlinedTextField(
+                                value = currentHours,
+                                onValueChange = { newValue ->
+                                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                        val hours = newValue.toDoubleOrNull() ?: 0.0
+                                        if (hours >= 0 && hours <= 24) {
+                                            weekdayHours = weekdayHours + (dayNumber to hours)
+                                        }
+                                    }
+                                },
+                                label = { Text("Horas") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
         
         // Campo: role (opcional)
         OutlinedTextField(
@@ -188,7 +266,10 @@ fun PersonForm(
                                 .filter { it.isNotEmpty() }
                                 .take(20) // Máximo 20 tags
                             
-                            onSave(trimmedName, hours, role.trim().takeIf { it.isNotEmpty() }, tags, active)
+                            // Preparar hoursPerWeekday
+                            val finalWeekdayHours = if (useWeekdayConfig) weekdayHours else null
+                            
+                            onSave(trimmedName, hours, finalWeekdayHours, role.trim().takeIf { it.isNotEmpty() }, tags, active)
                         }
                     }
                 }

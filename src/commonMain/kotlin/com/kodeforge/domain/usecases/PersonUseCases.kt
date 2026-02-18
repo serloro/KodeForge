@@ -29,6 +29,7 @@ class PersonUseCases {
         workspace: Workspace,
         displayName: String,
         hoursPerDay: Double,
+        hoursPerWeekday: Map<Int, Double>? = null,
         role: String? = null,
         avatar: String? = null,
         tags: List<String> = emptyList(),
@@ -61,6 +62,7 @@ class PersonUseCases {
             avatar = avatar,
             role = role?.trim()?.takeIf { it.isNotEmpty() },
             hoursPerDay = hoursPerDay,
+            hoursPerWeekday = hoursPerWeekday,
             active = active,
             tags = tags.map { it.trim() }.filter { it.isNotEmpty() },
             meta = PersonMeta(createdAt = createdAt)
@@ -85,6 +87,8 @@ class PersonUseCases {
         personId: String,
         displayName: String? = null,
         hoursPerDay: Double? = null,
+        hoursPerWeekday: Map<Int, Double>? = null,
+        updateWeekdayHours: Boolean = false,
         role: String? = null,
         avatar: String? = null,
         tags: List<String>? = null,
@@ -110,6 +114,7 @@ class PersonUseCases {
         val updatedPerson = existingPerson.copy(
             displayName = displayName?.trim() ?: existingPerson.displayName,
             hoursPerDay = hoursPerDay ?: existingPerson.hoursPerDay,
+            hoursPerWeekday = if (updateWeekdayHours) hoursPerWeekday else existingPerson.hoursPerWeekday,
             role = role?.trim()?.takeIf { it.isNotEmpty() } ?: existingPerson.role,
             avatar = avatar ?: existingPerson.avatar,
             tags = tags?.map { it.trim() }?.filter { it.isNotEmpty() } ?: existingPerson.tags,

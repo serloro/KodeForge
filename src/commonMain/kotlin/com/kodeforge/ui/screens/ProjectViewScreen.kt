@@ -18,6 +18,7 @@ import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.components.ProjectStats
 import com.kodeforge.ui.components.ProjectTimeline
 import com.kodeforge.ui.components.ToolsSidebar
+import com.kodeforge.ui.components.UnifiedHeader
 import com.kodeforge.ui.components.UtilityTilesGrid
 import com.kodeforge.ui.theme.KodeForgeColors
 
@@ -50,42 +51,10 @@ fun ProjectViewScreen(
             .fillMaxSize()
             .background(KodeForgeColors.Background)
     ) {
-        // Header con breadcrumb
-        TopAppBar(
-            title = {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "ProjectFlow",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFF666666)
-                    )
-                    Text(
-                        text = ">",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFF666666)
-                    )
-                    Text(
-                        text = project.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A)
-                    )
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Volver",
-                        tint = Color(0xFF1A1A1A)
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.White
-            )
+        // Header unificado con breadcrumb
+        UnifiedHeader(
+            breadcrumbs = listOf("KodeForge", project.name),
+            onBack = onBack
         )
         
         // Layout responsive: Sidebar + Contenido

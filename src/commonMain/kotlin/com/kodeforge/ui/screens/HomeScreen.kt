@@ -13,7 +13,7 @@ import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.smtp.SmtpServerManager
-import com.kodeforge.ui.components.Header
+import com.kodeforge.ui.components.UnifiedHeader
 import com.kodeforge.ui.components.Sidebar
 import com.kodeforge.ui.theme.KodeForgeColors
 
@@ -167,9 +167,10 @@ private fun HomeMainContent(
             .fillMaxSize()
             .background(KodeForgeColors.Background)
     ) {
-        // Header
-        Header(
-            onNewProject = onManageProjects
+        // Header unificado
+        UnifiedHeader(
+            breadcrumbs = listOf("KodeForge"),
+            onBack = null
         )
         
         // Contenido: Sidebar + Main
