@@ -97,8 +97,43 @@ fun DbToolScreen(
     
     // Dialog: Crear Conexión
     if (showCreateConnectionDialog) {
-        // TODO: Implementar dialog de creación
-        showCreateConnectionDialog = false
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showCreateConnectionDialog = false }) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                modifier = Modifier.width(600.dp)
+            ) {
+                com.kodeforge.ui.components.DbConnectionForm(
+                    connection = null,
+                    onSave = { name, type, host, port, database, username, authType, authValueRef ->
+                        val result = useCases.addConnection(
+                            workspace = workspace,
+                            projectId = projectId,
+                            name = name,
+                            type = type,
+                            host = host,
+                            port = port,
+                            database = database,
+                            username = username,
+                            authType = authType,
+                            authValueRef = authValueRef
+                        )
+                        
+                        result.onSuccess { updatedWorkspace ->
+                            onWorkspaceUpdate(updatedWorkspace)
+                            showCreateConnectionDialog = false
+                            // Seleccionar la nueva conexión
+                            val newConnection = updatedWorkspace.projects
+                                .find { it.id == projectId }
+                                ?.tools?.dbTools?.connections?.lastOrNull()
+                            selectedConnectionId = newConnection?.id
+                        }
+                    },
+                    onCancel = { showCreateConnectionDialog = false }
+                )
+            }
+        }
     }
 }
 

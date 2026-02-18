@@ -101,33 +101,42 @@ fun SftpToolScreen(
                     )
                 }
                 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    horizontalAlignment = Alignment.End
                 ) {
-                    Text(
-                        text = if (sftpTool?.enabled == true) "Habilitado" else "Deshabilitado",
-                        fontSize = 14.sp,
-                        color = if (sftpTool?.enabled == true) Color(0xFF4CAF50) else Color(0xFF757575),
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    Switch(
-                        checked = sftpTool?.enabled == true,
-                        onCheckedChange = { enabled ->
-                            val result = if (enabled) {
-                                useCases.enableSftpTool(workspace, projectId)
-                            } else {
-                                useCases.disableSftpTool(workspace, projectId)
-                            }
-                            result.onSuccess { updatedWorkspace ->
-                                onWorkspaceUpdate(updatedWorkspace)
-                            }
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF4CAF50),
-                            checkedTrackColor = Color(0xFFC8E6C9)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (sftpTool?.enabled == true) "Habilitado" else "Deshabilitado",
+                            fontSize = 14.sp,
+                            color = if (sftpTool?.enabled == true) Color(0xFF4CAF50) else Color(0xFF757575),
+                            fontWeight = FontWeight.Medium
                         )
+                        
+                        Switch(
+                            checked = sftpTool?.enabled == true,
+                            onCheckedChange = { enabled ->
+                                val result = if (enabled) {
+                                    useCases.enableSftpTool(workspace, projectId)
+                                } else {
+                                    useCases.disableSftpTool(workspace, projectId)
+                                }
+                                result.onSuccess { updatedWorkspace ->
+                                    onWorkspaceUpdate(updatedWorkspace)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF4CAF50),
+                                checkedTrackColor = Color(0xFFC8E6C9)
+                            )
+                        )
+                    }
+                    Text(
+                        text = "Habilita para usar conexiones SFTP",
+                        fontSize = 12.sp,
+                        color = Color(0xFF999999)
                     )
                 }
             }

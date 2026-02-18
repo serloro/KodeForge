@@ -9,6 +9,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Task
+import kotlin.math.ceil
 
 /**
  * Formulario para crear/editar una tarea.
@@ -32,7 +33,7 @@ fun TaskForm(
     var title by remember { mutableStateOf(task?.title ?: "") }
     var description by remember { mutableStateOf(task?.description ?: "") }
     var costHours by remember { mutableStateOf(task?.costHours?.toString() ?: "") }
-    var status by remember { mutableStateOf(task?.status ?: "todo") }
+    var status by remember { mutableStateOf(task?.status ?: "backlog") }
     var priority by remember { mutableStateOf(task?.priority?.toString() ?: "0") }
     var assigneeId by remember { mutableStateOf(task?.assigneeId) }
     
@@ -41,9 +42,11 @@ fun TaskForm(
     var assigneeExpanded by remember { mutableStateOf(false) }
     
     val statusOptions = listOf(
-        "todo" to "⚪ Por Hacer",
-        "in_progress" to "🟡 En Progreso",
-        "completed" to "✅ Completado"
+        "backlog" to "📋 Backlog",
+        "in_progress" to "🔄 In Progress",
+        "in_review" to "👀 In Review",
+        "testing" to "🧪 Testing",
+        "done" to "✅ Done"
     )
     
     Column(
@@ -115,16 +118,20 @@ fun TaskForm(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             isError = costHours.toDoubleOrNull()?.let { it <= 0 || it > 1000 } == true,
-            supportingText = {
-                val value = costHours.toDoubleOrNull()
-                when {
-                    costHours.isEmpty() -> Text("Debe ser mayor a 0")
-                    value == null -> Text("Valor numérico inválido")
-                    value <= 0 -> Text("Debe ser mayor a 0")
-                    value > 1000 -> Text("Máximo 1000 horas")
-                    else -> null
+            supportingText = if (costHours.isEmpty() || costHours.toDoubleOrNull()?.let { it <= 0 || it > 1000 } == true) {
+                {
+                    val value = costHours.toDoubleOrNull()
+                    Text(
+                        when {
+                            costHours.isEmpty() -> "Debe ser mayor a 0"
+                            value == null -> "Valor numérico inválido"
+                            value <= 0 -> "Debe ser mayor a 0"
+                            value > 1000 -> "Máximo 1000 horas"
+                            else -> ""
+                        }
+                    )
                 }
-            },
+            } else null,
             modifier = Modifier.fillMaxWidth()
         )
         
@@ -218,11 +225,26 @@ fun TaskForm(
                         text = { 
                             Column {
                                 Text(person.displayName)
-                                Text(
-                                    text = "${person.hoursPerDay}h/día disponibles",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                // Mostrar horario semanal si está configurado
+                                if (person.hoursPerWeekday != null) {
+                                    val weekSchedule = listOf("L", "M", "X", "J", "V", "S", "D")
+                                        .mapIndexed { index, day ->
+                                            val hours = person.getHoursForDay(index + 1)
+                                            "$day:${hours.toInt()}h"
+                                        }
+                                        .joinToString(" ")
+                                    Text(
+                                        text = weekSchedule,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Text(
+                                        text = "${person.hoursPerDay}h/día disponibles",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         },
                         onClick = {
@@ -230,6 +252,58 @@ fun TaskForm(
                             assigneeExpanded = false
                         }
                     )
+                }
+            }
+        }
+        
+        // Mostrar estimación de tiempo si hay persona asignada y costo en horas
+        val selectedPerson = availablePeople.find { it.id == assigneeId }
+        val taskHours = costHours.toDoubleOrNull()
+        if (selectedPerson != null && taskHours != null && taskHours > 0) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "⏱️ Estimación de tiempo",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    
+                    // Calcular días laborables necesarios
+                    if (selectedPerson.hoursPerWeekday != null) {
+                        // Usar horario semanal
+                        val hoursPerWeek = selectedPerson.hoursPerWeekday.values.sum()
+                        val weeksNeeded = taskHours / hoursPerWeek
+                        val daysNeeded = weeksNeeded * 7
+                        
+                        Text(
+                            text = "Con el horario de ${selectedPerson.displayName} (${hoursPerWeek.toInt()}h/semana):",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "• Tiempo estimado: ${String.format("%.1f", weeksNeeded)} semanas (~${ceil(daysNeeded).toInt()} días naturales)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    } else {
+                        // Usar horas por día estándar
+                        val daysNeeded = ceil(taskHours / selectedPerson.hoursPerDay)
+                        Text(
+                            text = "Con ${selectedPerson.hoursPerDay}h/día de ${selectedPerson.displayName}:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "• Tiempo estimado: ${daysNeeded.toInt()} días laborables",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
         }

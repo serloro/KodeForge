@@ -32,6 +32,7 @@ fun ToolsSidebar(
     selectedToolId: String?,
     onToolClick: (String) -> Unit,
     onBackToHub: () -> Unit,
+    onManageProject: (() -> Unit)? = null, // Nuevo parámetro para gestionar proyecto
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -88,6 +89,25 @@ fun ToolsSidebar(
                     onClick = { onToolClick(tool.id) }
                 )
                 Spacer(Modifier.height(4.dp))
+            }
+            
+            // Separador y opción de gestionar proyecto
+            if (onManageProject != null) {
+                Spacer(Modifier.height(KodeForgeSpacing.MD)) // 16dp
+                Divider(
+                    modifier = Modifier.padding(horizontal = KodeForgeSpacing.SM),
+                    color = KodeForgeColors.Divider,
+                    thickness = 1.dp
+                )
+                Spacer(Modifier.height(KodeForgeSpacing.MD)) // 16dp
+                
+                ToolItem(
+                    icon = Icons.Default.Settings,
+                    label = "Gestionar Proyecto",
+                    color = Color(0xFF607D8B),
+                    isSelected = selectedToolId == "manage_project",
+                    onClick = onManageProject
+                )
             }
         }
     }

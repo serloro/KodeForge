@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.Person
+import com.kodeforge.domain.model.Project
 
 /**
  * Formulario para crear/editar una persona.
@@ -23,7 +24,9 @@ import com.kodeforge.domain.model.Person
 @Composable
 fun PersonForm(
     person: Person? = null, // null = crear, no null = editar
-    onSave: (displayName: String, hoursPerDay: Double, hoursPerWeekday: Map<Int, Double>?, role: String?, tags: List<String>, active: Boolean) -> Unit,
+    availableProjects: List<Project> = emptyList(), // Proyectos disponibles para asignar
+    currentProjectIds: List<String> = emptyList(), // IDs de proyectos ya asignados a esta persona
+    onSave: (displayName: String, hoursPerDay: Double, hoursPerWeekday: Map<Int, Double>?, role: String?, tags: List<String>, active: Boolean, projectIds: List<String>) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -32,6 +35,7 @@ fun PersonForm(
     var role by remember { mutableStateOf(person?.role ?: "") }
     var tagsText by remember { mutableStateOf(person?.tags?.joinToString(", ") ?: "") }
     var active by remember { mutableStateOf(person?.active ?: true) }
+    var selectedProjectIds by remember { mutableStateOf(currentProjectIds.toSet()) }
     
     // Configuración de horas por día de la semana
     var useWeekdayConfig by remember { mutableStateOf(person?.hoursPerWeekday != null) }
@@ -102,16 +106,20 @@ fun PersonForm(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             isError = hoursPerDay.toDoubleOrNull()?.let { it <= 0 || it > 24 } == true,
-            supportingText = {
-                val value = hoursPerDay.toDoubleOrNull()
-                when {
-                    hoursPerDay.isEmpty() -> Text("Debe ser mayor a 0")
-                    value == null -> Text("Valor numérico inválido")
-                    value <= 0 -> Text("Debe ser mayor a 0")
-                    value > 24 -> Text("Máximo 24 horas por día")
-                    else -> null
+            supportingText = if (hoursPerDay.isEmpty() || hoursPerDay.toDoubleOrNull()?.let { it <= 0 || it > 24 } == true) {
+                {
+                    val value = hoursPerDay.toDoubleOrNull()
+                    Text(
+                        when {
+                            hoursPerDay.isEmpty() -> "Debe ser mayor a 0"
+                            value == null -> "Valor numérico inválido"
+                            value <= 0 -> "Debe ser mayor a 0"
+                            value > 24 -> "Máximo 24 horas por día"
+                            else -> ""
+                        }
+                    )
                 }
-            },
+            } else null,
             modifier = Modifier.fillMaxWidth()
         )
         
@@ -223,6 +231,77 @@ fun PersonForm(
             )
         }
         
+        // Selección de proyectos
+        if (availableProjects.isNotEmpty()) {
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            
+            Text(
+                text = "Proyectos Asignados",
+                style = MaterialTheme.typography.titleSmall
+            )
+            
+            Text(
+                text = "Selecciona los proyectos en los que trabajará esta persona",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(Modifier.height(8.dp))
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (availableProjects.isEmpty()) {
+                        Text(
+                            text = "No hay proyectos disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        availableProjects.forEach { project ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = project.id in selectedProjectIds,
+                                    onCheckedChange = { isChecked ->
+                                        selectedProjectIds = if (isChecked) {
+                                            selectedProjectIds + project.id
+                                        } else {
+                                            selectedProjectIds - project.id
+                                        }
+                                    }
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = project.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    if (project.description != null) {
+                                        Text(
+                                            text = project.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         Spacer(Modifier.height(8.dp))
         
         // Botones: Cancelar | Guardar
@@ -269,7 +348,7 @@ fun PersonForm(
                             // Preparar hoursPerWeekday
                             val finalWeekdayHours = if (useWeekdayConfig) weekdayHours else null
                             
-                            onSave(trimmedName, hours, finalWeekdayHours, role.trim().takeIf { it.isNotEmpty() }, tags, active)
+                            onSave(trimmedName, hours, finalWeekdayHours, role.trim().takeIf { it.isNotEmpty() }, tags, active, selectedProjectIds.toList())
                         }
                     }
                 }

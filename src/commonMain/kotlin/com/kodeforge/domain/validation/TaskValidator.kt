@@ -25,11 +25,9 @@ object TaskValidator {
         object PersonNotFound : ValidationError("Persona no encontrada")
         object PersonInactive : ValidationError("La persona está inactiva")
         object PersonNotProjectMember : ValidationError("La persona asignada debe ser miembro del proyecto")
-        object StatusInvalid : ValidationError("Estado inválido (debe ser: todo, in_progress, completed)")
+        object StatusInvalid : ValidationError("Estado inválido")
         object PriorityInvalid : ValidationError("Prioridad debe ser mayor o igual a 0")
     }
-    
-    private val validStatuses = setOf("todo", "in_progress", "completed")
     
     /**
      * Valida los datos para crear una tarea.
@@ -39,10 +37,12 @@ object TaskValidator {
         title: String,
         costHours: Double,
         projectId: String,
-        status: String = "todo",
+        status: String = "backlog",
         priority: Int = 0,
         assigneeId: String? = null
     ): Result<Unit> {
+        // Obtener estados válidos desde la configuración
+        val validStatuses = workspace.app.settings.ui.taskStatuses.map { it.id }.toSet()
         // Validar title
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty()) {
@@ -94,6 +94,8 @@ object TaskValidator {
         priority: Int? = null,
         assigneeId: String? = null
     ): Result<Unit> {
+        // Obtener estados válidos desde la configuración
+        val validStatuses = workspace.app.settings.ui.taskStatuses.map { it.id }.toSet()
         // Validar title si se proporciona
         title?.let {
             val trimmedTitle = it.trim()

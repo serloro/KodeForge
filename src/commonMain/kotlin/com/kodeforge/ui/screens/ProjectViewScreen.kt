@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.ui.components.ProjectStats
+import com.kodeforge.ui.components.ProjectSummary
 import com.kodeforge.ui.components.ProjectTimeline
 import com.kodeforge.ui.components.ToolsSidebar
 import com.kodeforge.ui.components.UnifiedHeader
@@ -42,6 +43,7 @@ fun ProjectViewScreen(
     project: Project,
     onBack: () -> Unit,
     onToolClick: (String) -> Unit = {},
+    onManageProject: (() -> Unit)? = null, // Nuevo parámetro para gestionar proyecto
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -71,7 +73,8 @@ fun ProjectViewScreen(
                     ToolsSidebar(
                         selectedToolId = null, // null = Hub del proyecto
                         onToolClick = onToolClick,
-                        onBackToHub = { /* Ya estamos en el hub */ }
+                        onBackToHub = { /* Ya estamos en el hub */ },
+                        onManageProject = onManageProject
                     )
                 }
                 
@@ -86,22 +89,19 @@ fun ProjectViewScreen(
                         ),
                     verticalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
-                    // Título del Hub
-                    Text(
-                        text = "Hub del Proyecto",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = KodeForgeColors.TextPrimary
+                    // Resumen del Proyecto
+                    ProjectSummary(
+                        workspace = workspace,
+                        project = project
                     )
                     
-                    // 1. Utilidades del Proyecto (solo en móvil/tablet sin sidebar)
+                    // Utilidades del Proyecto (solo en móvil/tablet sin sidebar)
                     if (!showSidebar) {
                         UtilityTilesGrid(
                             onUtilityClick = { utilityId ->
                                 onToolClick(utilityId)
                             }
                         )
-                        Divider(color = Color(0xFFE0E0E0))
                     }
                     
                     // 2. Timeline del Proyecto

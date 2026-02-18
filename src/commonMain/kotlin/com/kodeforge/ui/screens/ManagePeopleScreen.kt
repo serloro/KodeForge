@@ -181,7 +181,9 @@ fun ManagePeopleScreen(
             ) {
                 PersonForm(
                     person = null,
-                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active ->
+                    availableProjects = workspace.projects,
+                    currentProjectIds = emptyList(),
+                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active, projectIds ->
                         val result = personUseCases.createPerson(
                             workspace = workspace,
                             displayName = displayName,
@@ -193,7 +195,25 @@ fun ManagePeopleScreen(
                         )
                         
                         result.onSuccess { updatedWorkspace ->
-                            onWorkspaceUpdate(updatedWorkspace)
+                            // Asignar persona a proyectos seleccionados
+                            var finalWorkspace = updatedWorkspace
+                            val newPersonId = updatedWorkspace.people.last().id
+                            
+                            projectIds.forEach { projectId ->
+                                val project = finalWorkspace.projects.find { it.id == projectId }
+                                if (project != null && newPersonId !in project.members) {
+                                    val updatedProject = project.copy(
+                                        members = project.members + newPersonId
+                                    )
+                                    finalWorkspace = finalWorkspace.copy(
+                                        projects = finalWorkspace.projects.map {
+                                            if (it.id == projectId) updatedProject else it
+                                        }
+                                    )
+                                }
+                            }
+                            
+                            onWorkspaceUpdate(finalWorkspace)
                             showCreateDialog = false
                             errorMessage = null
                         }.onFailure { error ->
@@ -216,7 +236,9 @@ fun ManagePeopleScreen(
             ) {
                 PersonForm(
                     person = person,
-                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active ->
+                    availableProjects = workspace.projects,
+                    currentProjectIds = workspace.projects.filter { person.id in it.members }.map { it.id },
+                    onSave = { displayName, hoursPerDay, hoursPerWeekday, role, tags, active, projectIds ->
                         val result = personUseCases.updatePerson(
                             workspace = workspace,
                             personId = person.id,
@@ -230,7 +252,50 @@ fun ManagePeopleScreen(
                         )
                         
                         result.onSuccess { updatedWorkspace ->
-                            onWorkspaceUpdate(updatedWorkspace)
+                            // Actualizar asignación de proyectos
+                            var finalWorkspace = updatedWorkspace
+                            
+                            // Obtener proyectos actuales de la persona
+                            val currentProjects = finalWorkspace.projects.filter { person.id in it.members }
+                            val currentProjectIds = currentProjects.map { it.id }.toSet()
+                            val newProjectIds = projectIds.toSet()
+                            
+                            // Proyectos a agregar
+                            val projectsToAdd = newProjectIds - currentProjectIds
+                            // Proyectos a remover
+                            val projectsToRemove = currentProjectIds - newProjectIds
+                            
+                            // Agregar persona a nuevos proyectos
+                            projectsToAdd.forEach { projectId ->
+                                val project = finalWorkspace.projects.find { it.id == projectId }
+                                if (project != null) {
+                                    val updatedProject = project.copy(
+                                        members = project.members + person.id
+                                    )
+                                    finalWorkspace = finalWorkspace.copy(
+                                        projects = finalWorkspace.projects.map {
+                                            if (it.id == projectId) updatedProject else it
+                                        }
+                                    )
+                                }
+                            }
+                            
+                            // Remover persona de proyectos deseleccionados
+                            projectsToRemove.forEach { projectId ->
+                                val project = finalWorkspace.projects.find { it.id == projectId }
+                                if (project != null) {
+                                    val updatedProject = project.copy(
+                                        members = project.members.filter { it != person.id }
+                                    )
+                                    finalWorkspace = finalWorkspace.copy(
+                                        projects = finalWorkspace.projects.map {
+                                            if (it.id == projectId) updatedProject else it
+                                        }
+                                    )
+                                }
+                            }
+                            
+                            onWorkspaceUpdate(finalWorkspace)
                             personToEdit = null
                             errorMessage = null
                         }.onFailure { error ->

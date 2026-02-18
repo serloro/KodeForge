@@ -13,6 +13,7 @@ import com.kodeforge.domain.model.Person
 import com.kodeforge.domain.model.Project
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.smtp.SmtpServerManager
+import com.kodeforge.ui.components.HomeDashboard
 import com.kodeforge.ui.components.UnifiedHeader
 import com.kodeforge.ui.components.Sidebar
 import com.kodeforge.ui.theme.KodeForgeColors
@@ -54,6 +55,9 @@ fun HomeScreen(
                 onPersonClick = { person ->
                     currentScreen = Screen.PersonDetail(person)
                 },
+                onSettings = {
+                    currentScreen = Screen.Settings
+                },
                 onManageProjects = {
                     currentScreen = Screen.ManageProjects
                 },
@@ -85,6 +89,9 @@ fun HomeScreen(
                     onBack = { currentScreen = Screen.Home },
                     onToolClick = { toolType ->
                         currentScreen = Screen.Tool(toolType, project)
+                    },
+                    onManageProject = {
+                        currentScreen = Screen.ManageProject(project.id)
                     }
                 )
             } else {
@@ -147,6 +154,29 @@ fun HomeScreen(
                 }
             }
         }
+        is Screen.ManageProject -> {
+            val project = workspace.projects.find { it.id == screen.projectId }
+            if (project != null) {
+                ManageProjectScreen(
+                    workspace = workspace,
+                    project = project,
+                    onWorkspaceUpdate = onWorkspaceUpdate,
+                    onBack = { currentScreen = Screen.ProjectView(project) }
+                )
+            } else {
+                // Proyecto no encontrado, volver al home
+                LaunchedEffect(Unit) {
+                    currentScreen = Screen.Home
+                }
+            }
+        }
+        is Screen.Settings -> {
+            SettingsScreen(
+                workspace = workspace,
+                onWorkspaceUpdate = onWorkspaceUpdate,
+                onBack = { currentScreen = Screen.Home }
+            )
+        }
     }
 }
 
@@ -160,7 +190,8 @@ private fun HomeMainContent(
     onProjectClick: (com.kodeforge.domain.model.Project) -> Unit,
     onPersonClick: (com.kodeforge.domain.model.Person) -> Unit,
     onManageProjects: () -> Unit,
-    onManagePeople: () -> Unit
+    onManagePeople: () -> Unit,
+    onSettings: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -170,7 +201,8 @@ private fun HomeMainContent(
         // Header unificado
         UnifiedHeader(
             breadcrumbs = listOf("KodeForge"),
-            onBack = null
+            onBack = null,
+            onSettings = onSettings
         )
         
         // Contenido: Sidebar + Main
@@ -189,51 +221,13 @@ private fun HomeMainContent(
                 onManagePeople = onManagePeople
             )
             
-            // Main Content Area (placeholder para T2)
+            // Dashboard principal
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(KodeForgeColors.Background)
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Resumen de Proyectos",
-                        style = MaterialTheme.typography.displayLarge,
-                        color = KodeForgeColors.TextPrimary
-                    )
-                    Text(
-                        text = "T2 implementará: KPIs, gráficas y lista de proyectos",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = KodeForgeColors.TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Workspace cargado:",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = KodeForgeColors.TextSecondary
-                    )
-                    Text(
-                        text = "• ${workspace.projects.size} proyectos",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = KodeForgeColors.TextSecondary
-                    )
-                    Text(
-                        text = "• ${workspace.people.size} personas",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = KodeForgeColors.TextSecondary
-                    )
-                    Text(
-                        text = "• ${workspace.tasks.size} tareas",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = KodeForgeColors.TextSecondary
-                    )
-                }
+                HomeDashboard(workspace = workspace)
             }
         }
     }
@@ -246,8 +240,10 @@ private sealed class Screen {
     object Home : Screen()
     object ManagePeople : Screen()
     object ManageProjects : Screen()
+    object Settings : Screen()
     data class ProjectView(val project: Project) : Screen()
     data class ManageTasks(val project: Project) : Screen()
     data class PersonDetail(val person: Person) : Screen()
     data class Tool(val toolType: String, val project: Project) : Screen()
+    data class ManageProject(val projectId: String) : Screen()
 }

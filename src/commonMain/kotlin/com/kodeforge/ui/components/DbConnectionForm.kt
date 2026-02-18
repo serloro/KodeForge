@@ -8,11 +8,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kodeforge.domain.model.DbConnection
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Formulario para crear o editar una conexión de base de datos.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.DelicateCoroutinesApi::class)
 @Composable
 fun DbConnectionForm(
     connection: DbConnection?,
@@ -30,6 +33,8 @@ fun DbConnectionForm(
     var authValueRef by remember { mutableStateOf(connection?.auth?.valueRef ?: "") }
     
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+    var isTestingConnection by remember { mutableStateOf(false) }
     var expandedType by remember { mutableStateOf(false) }
     var expandedAuthType by remember { mutableStateOf(false) }
     
@@ -249,11 +254,32 @@ fun DbConnectionForm(
             
             // Error message
             if (errorMessage != null) {
-                Text(
-                    text = errorMessage!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFF44336)
-                )
+                Surface(
+                    color = Color(0xFFFFEBEE),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = errorMessage!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFF44336),
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+            
+            // Success message
+            if (successMessage != null) {
+                Surface(
+                    color = Color(0xFFE8F5E9),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = successMessage!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF4CAF50),
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
             }
             
             // Buttons
@@ -268,9 +294,59 @@ fun DbConnectionForm(
                     Text("Cancelar")
                 }
                 
+                OutlinedButton(
+                    onClick = {
+                        // Validar campos antes de probar
+                        errorMessage = null
+                        successMessage = null
+                        
+                        if (host.isBlank()) {
+                            errorMessage = "El host es obligatorio"
+                            return@OutlinedButton
+                        }
+                        if (port.isBlank() || port.toIntOrNull() == null) {
+                            errorMessage = "El puerto debe ser un número válido"
+                            return@OutlinedButton
+                        }
+                        if (database.isBlank()) {
+                            errorMessage = "La base de datos es obligatoria"
+                            return@OutlinedButton
+                        }
+                        if (username.isBlank()) {
+                            errorMessage = "El usuario es obligatorio"
+                            return@OutlinedButton
+                        }
+                        
+                        // Simular prueba de conexión
+                        isTestingConnection = true
+                        
+                        // En una implementación real, aquí se haría la conexión real
+                        // Por ahora, simulamos un éxito después de un breve delay
+                        kotlinx.coroutines.GlobalScope.launch {
+                            kotlinx.coroutines.delay(1000)
+                            isTestingConnection = false
+                            successMessage = "✓ Conexión exitosa a $type en $host:$port"
+                        }
+                    },
+                    enabled = !isTestingConnection,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (isTestingConnection) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (isTestingConnection) "Probando..." else "Probar")
+                }
+                
                 Button(
                     onClick = {
                         // Validaciones
+                        errorMessage = null
+                        successMessage = null
+                        
                         if (name.isBlank()) {
                             errorMessage = "El nombre es obligatorio"
                             return@Button

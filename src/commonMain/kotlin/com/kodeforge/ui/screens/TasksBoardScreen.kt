@@ -276,13 +276,26 @@ fun TasksBoardScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(taskStatuses.sortedBy { it.order }) { status ->
-                        KanbanColumn(
-                            status = status,
-                            tasks = filteredTasks.filter { it.status == status.id },
-                            people = workspace.people,
-                            onTaskClick = { taskToEdit = it },
-                            onTaskDelete = { taskToDelete = it }
+                KanbanColumn(
+                    status = status,
+                    tasks = filteredTasks.filter { it.status == status.id },
+                    people = workspace.people,
+                    allStatuses = taskStatuses,
+                    onTaskClick = { taskToEdit = it },
+                    onTaskDelete = { taskToDelete = it },
+                    onTaskMoveToStatus = { task, newStatusId ->
+                        val result = taskUseCases.updateTask(
+                            workspace = workspace,
+                            taskId = task.id,
+                            status = newStatusId
                         )
+                        result.onSuccess { updatedWorkspace ->
+                            onWorkspaceUpdate(updatedWorkspace)
+                        }.onFailure { error ->
+                            errorMessage = error.message
+                        }
+                    }
+                )
                     }
                 }
             }
@@ -434,8 +447,10 @@ private fun KanbanColumn(
     status: com.kodeforge.domain.model.TaskStatus,
     tasks: List<Task>,
     people: List<com.kodeforge.domain.model.Person>,
+    allStatuses: List<com.kodeforge.domain.model.TaskStatus>,
     onTaskClick: (Task) -> Unit,
     onTaskDelete: (Task) -> Unit,
+    onTaskMoveToStatus: (Task, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -497,8 +512,11 @@ private fun KanbanColumn(
                     TaskCard(
                         task = task,
                         assignee = task.assigneeId?.let { id -> people.find { it.id == id } },
+                        currentStatus = status,
+                        allStatuses = allStatuses,
                         onClick = { onTaskClick(task) },
-                        onDelete = { onTaskDelete(task) }
+                        onDelete = { onTaskDelete(task) },
+                        onMoveToStatus = { newStatusId -> onTaskMoveToStatus(task, newStatusId) }
                     )
                 }
             }
@@ -513,10 +531,15 @@ private fun KanbanColumn(
 private fun TaskCard(
     task: Task,
     assignee: com.kodeforge.domain.model.Person?,
+    currentStatus: com.kodeforge.domain.model.TaskStatus,
+    allStatuses: List<com.kodeforge.domain.model.TaskStatus>,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onMoveToStatus: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -534,15 +557,55 @@ private fun TaskCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Título
-            Text(
-                text = task.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A1A1A),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Header con título y menú
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.Top
+            ) {
+                // Título
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A1A),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Botón de menú
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Text("⋮", style = MaterialTheme.typography.titleMedium)
+                    }
+                    
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        Text(
+                            text = "Mover a:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF666666),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Divider()
+                        allStatuses.filter { it.id != currentStatus.id }.forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status.label) },
+                                onClick = {
+                                    onMoveToStatus(status.id)
+                                    showMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             
             // Descripción (si existe)
             task.description?.let { desc ->
