@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,13 +21,11 @@ import com.kodeforge.ui.components.ToolLayout
 import com.kodeforge.ui.theme.KodeForgeColors
 
 /**
- * Pantalla rediseñada del tool de base de datos.
+ * Pantalla de la herramienta de Base de Datos.
  * 
- * Flujo:
- * 1. Seleccionar o crear una conexión
- * 2. Una vez seleccionada, mostrar tabs:
- *    - Ejecutar SQL
- *    - SQL Guardadas
+ * Flujo mejorado:
+ * 1. Vista inicial: Lista de conexiones (crear/editar/eliminar)
+ * 2. Al conectar: Vista de trabajo con tabs (Ejecutar SQL / SQL Guardadas)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,8 +43,11 @@ fun DbToolScreen(
     val dbTool = useCases.getDbTool(workspace, projectId)
     val connections = dbTool?.connections ?: emptyList()
     
-    var selectedConnectionId by remember { mutableStateOf<String?>(connections.firstOrNull()?.id) }
-    var showCreateConnectionDialog by remember { mutableStateOf(false) }
+    // Estado: null = lista de conexiones, connectionId = conectado a esa BD
+    var connectedConnectionId by remember { mutableStateOf<String?>(null) }
+    var showConnectionForm by remember { mutableStateOf(false) }
+    var editingConnection by remember { mutableStateOf<DbConnection?>(null) }
+    var connectionToDelete by remember { mutableStateOf<DbConnection?>(null) }
     
     ToolLayout(
         project = project,
@@ -56,48 +58,49 @@ fun DbToolScreen(
         onBackToHub = onBackToHub,
         modifier = modifier
     ) {
-        if (connections.isEmpty()) {
-            // Estado vacío: No hay conexiones
-            EmptyConnectionsState(
-                onCreateConnection = { showCreateConnectionDialog = true }
+        if (connectedConnectionId == null) {
+            // VISTA 1: Lista de conexiones
+            ConnectionsListView(
+                connections = connections,
+                onConnect = { connection ->
+                    connectedConnectionId = connection.id
+                },
+                onCreateConnection = {
+                    editingConnection = null
+                    showConnectionForm = true
+                },
+                onEditConnection = { connection ->
+                    editingConnection = connection
+                    showConnectionForm = true
+                },
+                onDeleteConnection = { connection ->
+                    connectionToDelete = connection
+                }
             )
         } else {
-            // Hay conexiones: Mostrar selector + contenido
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Selector de conexión
-                ConnectionSelector(
-                    connections = connections,
-                    selectedConnectionId = selectedConnectionId,
-                    onConnectionSelect = { selectedConnectionId = it },
-                    onCreateConnection = { showCreateConnectionDialog = true },
-                    onEditConnection = { connection ->
-                        // TODO: Implementar edición
-                    },
-                    onDeleteConnection = { connection ->
-                        // TODO: Implementar eliminación
-                    }
+            // VISTA 2: Conectado a una BD
+            val connectedConnection = connections.find { it.id == connectedConnectionId }
+            if (connectedConnection != null) {
+                ConnectedView(
+                    workspace = workspace,
+                    projectId = projectId,
+                    connection = connectedConnection,
+                    dbTool = dbTool,
+                    onWorkspaceUpdate = onWorkspaceUpdate,
+                    onDisconnect = { connectedConnectionId = null }
                 )
-                
-                Divider()
-                
-                // Contenido según conexión seleccionada
-                val selectedConnection = connections.find { it.id == selectedConnectionId }
-                if (selectedConnection != null) {
-                    ConnectionContent(
-                        workspace = workspace,
-                        projectId = projectId,
-                        connection = selectedConnection,
-                        dbTool = dbTool,
-                        onWorkspaceUpdate = onWorkspaceUpdate
-                    )
-                }
             }
         }
     }
     
-    // Dialog: Crear Conexión
-    if (showCreateConnectionDialog) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showCreateConnectionDialog = false }) {
+    // Dialog: Crear/Editar Conexión
+    if (showConnectionForm) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { 
+                showConnectionForm = false
+                editingConnection = null
+            }
+        ) {
             Surface(
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surface,
@@ -105,40 +108,329 @@ fun DbToolScreen(
                 modifier = Modifier.width(600.dp)
             ) {
                 com.kodeforge.ui.components.DbConnectionForm(
-                    connection = null,
+                    connection = editingConnection,
                     onSave = { name, type, host, port, database, username, authType, authValueRef ->
-                        val result = useCases.addConnection(
-                            workspace = workspace,
-                            projectId = projectId,
-                            name = name,
-                            type = type,
-                            host = host,
-                            port = port,
-                            database = database,
-                            username = username,
-                            authType = authType,
-                            authValueRef = authValueRef
-                        )
+                        val result = if (editingConnection == null) {
+                            // Crear nueva
+                            useCases.addConnection(
+                                workspace = workspace,
+                                projectId = projectId,
+                                name = name,
+                                type = type,
+                                host = host,
+                                port = port,
+                                database = database,
+                                username = username,
+                                authType = authType,
+                                authValueRef = authValueRef
+                            )
+                        } else {
+                            // Editar existente
+                            useCases.updateConnection(
+                                workspace = workspace,
+                                projectId = projectId,
+                                connectionId = editingConnection!!.id,
+                                name = name,
+                                type = type,
+                                host = host,
+                                port = port,
+                                database = database,
+                                username = username,
+                                authType = authType,
+                                authValueRef = authValueRef
+                            )
+                        }
                         
                         result.onSuccess { updatedWorkspace ->
                             onWorkspaceUpdate(updatedWorkspace)
-                            showCreateConnectionDialog = false
-                            // Seleccionar la nueva conexión
-                            val newConnection = updatedWorkspace.projects
-                                .find { it.id == projectId }
-                                ?.tools?.dbTools?.connections?.lastOrNull()
-                            selectedConnectionId = newConnection?.id
+                            showConnectionForm = false
+                            editingConnection = null
                         }
                     },
-                    onCancel = { showCreateConnectionDialog = false }
+                    onCancel = { 
+                        showConnectionForm = false
+                        editingConnection = null
+                    }
                 )
+            }
+        }
+    }
+    
+    // Dialog: Confirmar eliminación
+    if (connectionToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { connectionToDelete = null },
+            title = { Text("Eliminar Conexión") },
+            text = {
+                Text("¿Estás seguro de que quieres eliminar la conexión '${connectionToDelete!!.name}'?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val result = useCases.deleteConnection(
+                            workspace = workspace,
+                            projectId = projectId,
+                            connectionId = connectionToDelete!!.id
+                        )
+                        result.onSuccess { updatedWorkspace ->
+                            onWorkspaceUpdate(updatedWorkspace)
+                            connectionToDelete = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF44336)
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { connectionToDelete = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+/**
+ * VISTA 1: Lista de conexiones disponibles
+ */
+@Composable
+private fun ConnectionsListView(
+    connections: List<DbConnection>,
+    onConnect: (DbConnection) -> Unit,
+    onCreateConnection: () -> Unit,
+    onEditConnection: (DbConnection) -> Unit,
+    onDeleteConnection: (DbConnection) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        if (connections.isEmpty()) {
+            // Estado vacío
+            EmptyConnectionsState(onCreateConnection = onCreateConnection)
+        } else {
+            // Lista de conexiones
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFF8F9FA),
+                    tonalElevation = 1.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Conexiones de Base de Datos",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = KodeForgeColors.TextPrimary
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "${connections.size} ${if (connections.size == 1) "conexión configurada" else "conexiones configuradas"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = KodeForgeColors.TextSecondary
+                            )
+                        }
+                        
+                        Button(
+                            onClick = onCreateConnection,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = KodeForgeColors.Primary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Nueva Conexión")
+                        }
+                    }
+                }
+                
+                // Lista
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(connections) { connection ->
+                        DbConnectionCard(
+                            connection = connection,
+                            onConnect = { onConnect(connection) },
+                            onEdit = { onEditConnection(connection) },
+                            onDelete = { onDeleteConnection(connection) }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 /**
- * Estado vacío cuando no hay conexiones.
+ * Card de conexión mejorada visualmente
+ */
+@Composable
+private fun DbConnectionCard(
+    connection: DbConnection,
+    onConnect: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Header con icono y nombre
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Icono del tipo de BD
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = getDbTypeColor(connection.type).copy(alpha = 0.1f),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text(
+                                text = getDbIcon(connection.type),
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                        }
+                    }
+                    
+                    Column {
+                        Text(
+                            text = connection.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = KodeForgeColors.TextPrimary
+                        )
+                        
+                        // Badge del tipo
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = getDbTypeColor(connection.type)
+                        ) {
+                            Text(
+                                text = connection.type.uppercase(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+                
+                // Botones de acción
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = onEdit) {
+                        Text("✏️", style = MaterialTheme.typography.titleMedium)
+                    }
+                    IconButton(onClick = onDelete) {
+                        Text("🗑️", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            
+            // Información de la conexión
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ConnectionInfoRow(
+                    label = "Host",
+                    value = "${connection.host}:${connection.port}"
+                )
+                ConnectionInfoRow(
+                    label = "Base de Datos",
+                    value = connection.database
+                )
+                ConnectionInfoRow(
+                    label = "Usuario",
+                    value = connection.username
+                )
+                ConnectionInfoRow(
+                    label = "Autenticación",
+                    value = connection.auth.type.replaceFirstChar { it.uppercase() }
+                )
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            
+            // Botón conectar
+            Button(
+                onClick = onConnect,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = KodeForgeColors.Primary
+                )
+            ) {
+                Text("🔌 Conectar", style = MaterialTheme.typography.titleSmall)
+            }
+        }
+    }
+}
+
+/**
+ * Fila de información de conexión
+ */
+@Composable
+private fun ConnectionInfoRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = KodeForgeColors.TextSecondary,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = KodeForgeColors.TextPrimary,
+            fontWeight = FontWeight.Normal
+        )
+    }
+}
+
+/**
+ * Estado vacío cuando no hay conexiones
  */
 @Composable
 private fun EmptyConnectionsState(
@@ -155,133 +447,40 @@ private fun EmptyConnectionsState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Text(
-                text = "🗄️",
-                style = MaterialTheme.typography.displayLarge
-            )
-            
-            Text(
-                text = "No hay conexiones configuradas",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = KodeForgeColors.TextPrimary
-            )
-            
-            Text(
-                text = "Crea una conexión a tu base de datos para comenzar",
-                style = MaterialTheme.typography.bodyLarge,
-                color = KodeForgeColors.TextSecondary
-            )
-            
-            Button(
-                onClick = onCreateConnection,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = KodeForgeColors.Primary
-                )
+            // Icono grande
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = Color(0xFFF5F7FA),
+                modifier = Modifier.size(120.dp)
             ) {
-                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Crear Conexión")
-            }
-        }
-    }
-}
-
-/**
- * Selector de conexión en la parte superior.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ConnectionSelector(
-    connections: List<DbConnection>,
-    selectedConnectionId: String?,
-    onConnectionSelect: (String) -> Unit,
-    onCreateConnection: () -> Unit,
-    onEditConnection: (DbConnection) -> Unit,
-    onDeleteConnection: (DbConnection) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F7FA)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Conexión activa",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF666666)
-                )
-                
-                // Dropdown de conexiones
-                var expanded by remember { mutableStateOf(false) }
-                val selectedConnection = connections.find { it.id == selectedConnectionId }
-                
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    OutlinedTextField(
-                        value = selectedConnection?.name ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Seleccionar conexión") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
+                    Text(
+                        text = "🗄️",
+                        style = MaterialTheme.typography.displayLarge
                     )
-                    
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        connections.forEach { connection ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(getDbIcon(connection.type))
-                                        Column {
-                                            Text(
-                                                text = connection.name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Text(
-                                                text = "${connection.type.uppercase()} • ${connection.host}:${connection.port}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Color(0xFF666666)
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    onConnectionSelect(connection.id)
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
                 }
             }
             
-            Spacer(Modifier.width(16.dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "No hay conexiones configuradas",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = KodeForgeColors.TextPrimary
+                )
+                
+                Text(
+                    text = "Crea tu primera conexión a base de datos para comenzar",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = KodeForgeColors.TextSecondary
+                )
+            }
             
             Button(
                 onClick = onCreateConnection,
@@ -289,35 +488,83 @@ private fun ConnectionSelector(
                     containerColor = KodeForgeColors.Primary
                 )
             ) {
-                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                Icon(Icons.Default.Add, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Nueva")
+                Text("Crear Primera Conexión")
             }
         }
     }
 }
 
 /**
- * Contenido principal con tabs para ejecutar SQL y ver SQL guardadas.
+ * VISTA 2: Vista conectada con tabs
  */
 @Composable
-private fun ConnectionContent(
+private fun ConnectedView(
     workspace: Workspace,
     projectId: String,
     connection: DbConnection,
     dbTool: com.kodeforge.domain.model.DbTool?,
     onWorkspaceUpdate: (Workspace) -> Unit,
+    onDisconnect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Ejecutar SQL", "SQL Guardadas")
+    val tabs = listOf("Ejecutar SQL", "SQL Guardadas", "Historial")
     
     Column(modifier = modifier.fillMaxSize()) {
+        // Header de conexión activa
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFF1976D2),
+            tonalElevation = 4.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDisconnect) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Desconectar",
+                            tint = Color.White
+                        )
+                    }
+                    
+                    Column {
+                        Text(
+                            text = "Conectado a: ${connection.name}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "${connection.type.uppercase()} • ${connection.host}:${connection.port} • ${connection.database}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
+                
+                Text(
+                    text = getDbIcon(connection.type),
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
+        }
+        
         // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = Color.White,
-            contentColor = Color(0xFF1976D2)
+            contentColor = KodeForgeColors.Primary
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -348,12 +595,16 @@ private fun ConnectionContent(
                 dbTool = dbTool,
                 onWorkspaceUpdate = onWorkspaceUpdate
             )
+            2 -> HistoryTab(
+                dbTool = dbTool,
+                connection = connection
+            )
         }
     }
 }
 
 /**
- * Tab para ejecutar SQL.
+ * Tab para ejecutar SQL
  */
 @Composable
 private fun ExecuteSqlTab(
@@ -363,13 +614,11 @@ private fun ExecuteSqlTab(
     onWorkspaceUpdate: (Workspace) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(24.dp)
     ) {
-        // Query Runner (reutilizar el componente existente)
         com.kodeforge.ui.components.QueryRunner(
             workspace = workspace,
             projectId = projectId,
@@ -381,7 +630,7 @@ private fun ExecuteSqlTab(
 }
 
 /**
- * Tab para SQL guardadas.
+ * Tab para SQL guardadas
  */
 @Composable
 private fun SavedSqlTab(
@@ -398,6 +647,7 @@ private fun SavedSqlTab(
     
     var selectedQueryId by remember { mutableStateOf<String?>(null) }
     var showCreateForm by remember { mutableStateOf(false) }
+    var queryToDelete by remember { mutableStateOf<com.kodeforge.domain.model.SavedQuery?>(null) }
     
     if (queriesForConnection.isEmpty() && !showCreateForm) {
         // Estado vacío
@@ -412,8 +662,18 @@ private fun SavedSqlTab(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "No hay SQL guardadas para esta conexión",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "📝",
+                    style = MaterialTheme.typography.displayMedium
+                )
+                Text(
+                    text = "No hay SQL guardadas",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = KodeForgeColors.TextPrimary
+                )
+                Text(
+                    text = "Guarda tus queries más usadas para acceder rápidamente",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = KodeForgeColors.TextSecondary
                 )
                 
@@ -433,19 +693,20 @@ private fun SavedSqlTab(
         Row(
             modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Lista de queries (izquierda)
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "SQL Guardadas (${queriesForConnection.size})",
@@ -454,9 +715,14 @@ private fun SavedSqlTab(
                     )
                     
                     Button(
-                        onClick = { showCreateForm = true }
+                        onClick = { showCreateForm = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = KodeForgeColors.Primary
+                        )
                     ) {
-                        Text("+ Nueva")
+                        Icon(Icons.Default.Add, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Nueva")
                     }
                 }
                 
@@ -474,7 +740,7 @@ private fun SavedSqlTab(
                                 // TODO: Implementar edición
                             },
                             onDelete = {
-                                // TODO: Implementar eliminación
+                                queryToDelete = query
                             }
                         )
                     }
@@ -513,65 +779,28 @@ private fun SavedSqlTab(
                     val selectedQuery = queriesForConnection.find { it.id == selectedQueryId }
                     
                     if (selectedQuery != null) {
-                        // Mostrar detalle de la query
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color.White
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text(
-                                    text = selectedQuery.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                Divider()
-                                
-                                Text(
-                                    text = "SQL",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                Card(
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFF5F7FA)
-                                    )
-                                ) {
-                                    Text(
-                                        text = selectedQuery.sql,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(12.dp)
-                                    )
-                                }
-                                
-                                Button(
-                                    onClick = {
-                                        // TODO: Ejecutar esta query
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("Ejecutar")
-                                }
-                            }
-                        }
+                        SavedQueryDetail(
+                            query = selectedQuery,
+                            workspace = workspace,
+                            projectId = projectId,
+                            connection = connection,
+                            onWorkspaceUpdate = onWorkspaceUpdate
+                        )
                     } else {
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = Color(0xFFF5F7FA)
                             )
                         ) {
-                            Box(modifier = Modifier.padding(24.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
                                     text = "Selecciona una SQL para ver sus detalles",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyLarge,
                                     color = Color(0xFF666666)
                                 )
                             }
@@ -581,10 +810,220 @@ private fun SavedSqlTab(
             }
         }
     }
+    
+    // Dialog: Confirmar eliminación de query
+    if (queryToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { queryToDelete = null },
+            title = { Text("Eliminar SQL Guardada") },
+            text = {
+                Text("¿Estás seguro de que quieres eliminar '${queryToDelete!!.name}'?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val result = useCases.deleteSavedQuery(
+                            workspace = workspace,
+                            projectId = projectId,
+                            queryId = queryToDelete!!.id
+                        )
+                        result.onSuccess { updatedWorkspace ->
+                            onWorkspaceUpdate(updatedWorkspace)
+                            queryToDelete = null
+                            selectedQueryId = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF44336)
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { queryToDelete = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 /**
- * Obtiene el icono emoji para un tipo de base de datos.
+ * Detalle de una SQL guardada
+ */
+@Composable
+private fun SavedQueryDetail(
+    query: com.kodeforge.domain.model.SavedQuery,
+    workspace: Workspace,
+    projectId: String,
+    connection: DbConnection,
+    onWorkspaceUpdate: (Workspace) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxSize(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = query.name,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Divider()
+            
+            Text(
+                text = "SQL Query",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = KodeForgeColors.TextSecondary
+            )
+            
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFF5F7FA)
+                )
+            ) {
+                Text(
+                    text = query.sql,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            }
+            
+            Spacer(Modifier.weight(1f))
+            
+            Button(
+                onClick = {
+                    // TODO: Ejecutar esta query en el tab de Ejecutar SQL
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = KodeForgeColors.Primary
+                )
+            ) {
+                Text("▶️ Ejecutar Query")
+            }
+        }
+    }
+}
+
+/**
+ * Tab de historial
+ */
+@Composable
+private fun HistoryTab(
+    dbTool: com.kodeforge.domain.model.DbTool?,
+    connection: DbConnection,
+    modifier: Modifier = Modifier
+) {
+    val historyForConnection = dbTool?.executionHistory?.filter { 
+        it.connectionId == connection.id 
+    } ?: emptyList()
+    
+    if (historyForConnection.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "📊",
+                    style = MaterialTheme.typography.displayMedium
+                )
+                Text(
+                    text = "No hay historial de ejecuciones",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = KodeForgeColors.TextPrimary
+                )
+                Text(
+                    text = "Ejecuta queries para ver el historial aquí",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = KodeForgeColors.TextSecondary
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(historyForConnection.reversed()) { execution ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (execution.success) Color(0xFFF1F8F4) else Color(0xFFFFF4F4)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = if (execution.success) "✅ Exitosa" else "❌ Error",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (execution.success) Color(0xFF2E7D32) else Color(0xFFC62828)
+                            )
+                            Text(
+                                text = execution.executedAt,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = KodeForgeColors.TextSecondary
+                            )
+                        }
+                        
+                        Text(
+                            text = execution.sql,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            maxLines = 2
+                        )
+                        
+                        if (execution.success) {
+                            Text(
+                                text = "${execution.rowCount} filas • ${execution.executionTimeMs}ms",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = KodeForgeColors.TextSecondary
+                            )
+                        } else if (execution.error != null) {
+                            Text(
+                                text = "Error: ${execution.error}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFC62828),
+                                maxLines = 2
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Obtiene el icono emoji para un tipo de base de datos
  */
 private fun getDbIcon(type: String): String {
     return when (type.lowercase()) {
@@ -599,3 +1038,18 @@ private fun getDbIcon(type: String): String {
     }
 }
 
+/**
+ * Retorna un color según el tipo de base de datos
+ */
+private fun getDbTypeColor(type: String): Color {
+    return when (type.lowercase()) {
+        "postgres", "postgresql" -> Color(0xFF336791)
+        "mysql" -> Color(0xFF00758F)
+        "sqlite" -> Color(0xFF003B57)
+        "oracle" -> Color(0xFFF80000)
+        "sqlserver", "mssql" -> Color(0xFFCC2927)
+        "mariadb" -> Color(0xFF003545)
+        "mongodb" -> Color(0xFF47A248)
+        else -> Color(0xFF666666)
+    }
+}

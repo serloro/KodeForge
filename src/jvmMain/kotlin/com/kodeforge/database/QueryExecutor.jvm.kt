@@ -10,11 +10,12 @@ import kotlin.system.measureTimeMillis
  * 
  * Soporta:
  * - SQLite (nativo, sin drivers externos)
- * 
- * Futuro:
- * - PostgreSQL (requiere driver)
- * - MySQL (requiere driver)
- * - etc.
+ * - PostgreSQL (requiere driver JDBC)
+ * - MySQL (requiere driver JDBC)
+ * - MariaDB (requiere driver JDBC)
+ * - SQL Server (requiere driver JDBC)
+ * - Oracle (requiere driver JDBC)
+ * - MongoDB (requiere driver específico)
  */
 actual class QueryExecutor {
     
@@ -25,11 +26,20 @@ actual class QueryExecutor {
         return try {
             when (connection.type.lowercase()) {
                 "sqlite" -> executeSqlite(connection, sql)
+                "postgres", "postgresql" -> executeJdbc(connection, sql)
+                "mysql" -> executeJdbc(connection, sql)
+                "mariadb" -> executeJdbc(connection, sql)
+                "sqlserver", "mssql" -> executeJdbc(connection, sql)
+                "oracle" -> executeJdbc(connection, sql)
+                "mongodb" -> QueryResult(
+                    success = false,
+                    error = "MongoDB requiere un driver específico que no está incluido.\n" +
+                            "Considera usar las herramientas nativas de MongoDB."
+                )
                 else -> QueryResult(
                     success = false,
-                    error = "Tipo de base de datos '${connection.type}' no soportado en este target aún.\n" +
-                            "Actualmente solo SQLite está soportado.\n" +
-                            "Puedes guardar la conexión y queries para uso futuro."
+                    error = "Tipo de base de datos '${connection.type}' no reconocido.\n" +
+                            "Tipos soportados: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite"
                 )
             }
         } catch (e: Exception) {
@@ -46,7 +56,79 @@ actual class QueryExecutor {
     actual fun isSupported(dbType: String): Boolean {
         return when (dbType.lowercase()) {
             "sqlite" -> true
+            "postgres", "postgresql" -> true
+            "mysql" -> true
+            "mariadb" -> true
+            "sqlserver", "mssql" -> true
+            "oracle" -> true
             else -> false
+        }
+    }
+    
+    /**
+     * Ejecuta una query usando JDBC genérico (PostgreSQL, MySQL, etc.)
+     */
+    private fun executeJdbc(connection: DbConnection, sql: String): QueryResult {
+        var executionTime = 0L
+        
+        return try {
+            // Construir URL JDBC
+            val jdbcUrl = buildJdbcUrl(connection)
+            
+            // Cargar driver apropiado
+            loadDriver(connection.type)
+            
+            // Obtener credenciales
+            val password = extractPassword(connection.auth.valueRef)
+            
+            // Conectar y ejecutar
+            DriverManager.getConnection(jdbcUrl, connection.username, password).use { conn ->
+                conn.createStatement().use { statement ->
+                    
+                    // Determinar si es una query SELECT o un comando
+                    val trimmedSql = sql.trim()
+                    val isQuery = trimmedSql.startsWith("SELECT", ignoreCase = true) ||
+                                  trimmedSql.startsWith("WITH", ignoreCase = true) ||
+                                  trimmedSql.startsWith("SHOW", ignoreCase = true) ||
+                                  trimmedSql.startsWith("DESCRIBE", ignoreCase = true) ||
+                                  trimmedSql.startsWith("DESC", ignoreCase = true)
+                    
+                    if (isQuery) {
+                        // Es una SELECT, usar executeQuery
+                        val resultSet: ResultSet
+                        executionTime = measureTimeMillis {
+                            resultSet = statement.executeQuery(sql)
+                        }
+                        parseResultSet(resultSet, executionTime)
+                    } else {
+                        // Es un comando (CREATE, INSERT, UPDATE, DELETE, etc.)
+                        var affectedRows = 0
+                        executionTime = measureTimeMillis {
+                            statement.execute(sql)
+                            affectedRows = statement.updateCount
+                        }
+                        QueryResult(
+                            success = true,
+                            rowCount = affectedRows,
+                            executionTimeMs = executionTime
+                        )
+                    }
+                }
+            }
+        } catch (e: ClassNotFoundException) {
+            QueryResult(
+                success = false,
+                executionTimeMs = executionTime,
+                error = "Driver JDBC no encontrado para ${connection.type}.\n" +
+                        "Asegúrate de tener el driver JDBC correspondiente en el classpath.\n" +
+                        "Error: ${e.message}"
+            )
+        } catch (e: Exception) {
+            QueryResult(
+                success = false,
+                executionTimeMs = executionTime,
+                error = "Error ${connection.type}: ${e.message}"
+            )
         }
     }
     
@@ -113,6 +195,64 @@ actual class QueryExecutor {
             "jdbc:sqlite::memory:"
         } else {
             "jdbc:sqlite:${connection.database}"
+        }
+    }
+    
+    /**
+     * Construye la URL JDBC genérica para otras bases de datos.
+     */
+    private fun buildJdbcUrl(connection: DbConnection): String {
+        return when (connection.type.lowercase()) {
+            "postgres", "postgresql" -> 
+                "jdbc:postgresql://${connection.host}:${connection.port}/${connection.database}"
+            "mysql" -> 
+                "jdbc:mysql://${connection.host}:${connection.port}/${connection.database}"
+            "mariadb" -> 
+                "jdbc:mariadb://${connection.host}:${connection.port}/${connection.database}"
+            "sqlserver", "mssql" -> 
+                "jdbc:sqlserver://${connection.host}:${connection.port};databaseName=${connection.database}"
+            "oracle" -> 
+                "jdbc:oracle:thin:@${connection.host}:${connection.port}:${connection.database}"
+            else -> throw IllegalArgumentException("Tipo de base de datos no soportado: ${connection.type}")
+        }
+    }
+    
+    /**
+     * Carga el driver JDBC apropiado.
+     */
+    private fun loadDriver(dbType: String) {
+        val driverClass = when (dbType.lowercase()) {
+            "postgres", "postgresql" -> "org.postgresql.Driver"
+            "mysql" -> "com.mysql.cj.jdbc.Driver"
+            "mariadb" -> "org.mariadb.jdbc.Driver"
+            "sqlserver", "mssql" -> "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+            "oracle" -> "oracle.jdbc.driver.OracleDriver"
+            else -> throw IllegalArgumentException("Driver no disponible para: $dbType")
+        }
+        
+        try {
+            Class.forName(driverClass)
+        } catch (e: ClassNotFoundException) {
+            throw ClassNotFoundException(
+                "Driver JDBC '$driverClass' no encontrado. " +
+                "Agrega la dependencia correspondiente al proyecto."
+            )
+        }
+    }
+    
+    /**
+     * Extrae la contraseña del valueRef.
+     * Si comienza con "secret:", busca en el sistema de secrets.
+     * Si no, asume que es la contraseña en texto plano.
+     */
+    private fun extractPassword(valueRef: String): String {
+        return if (valueRef.startsWith("secret:")) {
+            // TODO: Implementar sistema de secrets
+            // Por ahora, devolver vacío
+            ""
+        } else {
+            // Es la contraseña directamente
+            valueRef
         }
     }
     

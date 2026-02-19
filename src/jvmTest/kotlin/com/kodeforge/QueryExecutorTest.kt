@@ -144,20 +144,20 @@ class QueryExecutorTest {
     fun `execute - unsupported database type returns error`() = runBlocking {
         val executor = QueryExecutor()
         val connection = DbConnection(
-            id = "conn_postgres",
-            name = "PostgreSQL",
-            type = "postgres",
+            id = "conn_unknown",
+            name = "Unknown DB",
+            type = "unknowndb",
             host = "localhost",
-            port = 5432,
+            port = 9999,
             database = "testdb",
-            username = "postgres",
+            username = "user",
             auth = AuthConfig(type = "password", valueRef = "secret:db_001")
         )
         
         val result = executor.execute(connection, "SELECT 1")
         
         assertTrue(result.success == false)
-        assertTrue(result.error?.contains("no soportado") == true)
+        assertTrue(result.error?.contains("no reconocido") == true || result.error?.contains("no soportado") == true)
     }
     
     @Test
@@ -170,12 +170,23 @@ class QueryExecutorTest {
     }
     
     @Test
-    fun `isSupported - returns false for other databases`() {
+    fun `isSupported - returns true for all supported databases`() {
         val executor = QueryExecutor()
         
-        assertTrue(!executor.isSupported("postgres"))
-        assertTrue(!executor.isSupported("mysql"))
-        assertTrue(!executor.isSupported("oracle"))
+        // Todos estos ahora están soportados
+        assertTrue(executor.isSupported("postgres"))
+        assertTrue(executor.isSupported("postgresql"))
+        assertTrue(executor.isSupported("mysql"))
+        assertTrue(executor.isSupported("mariadb"))
+        assertTrue(executor.isSupported("sqlserver"))
+        assertTrue(executor.isSupported("mssql"))
+        assertTrue(executor.isSupported("oracle"))
+        assertTrue(executor.isSupported("sqlite"))
+        
+        // MongoDB no está soportado
+        assertTrue(!executor.isSupported("mongodb"))
+        // Base de datos desconocida
+        assertTrue(!executor.isSupported("unknowndb"))
     }
     
     @Test

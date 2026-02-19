@@ -132,9 +132,9 @@ fun QueryRunner(
                         Box(modifier = Modifier.padding(8.dp)) {
                             Text(
                                 text = if (isSupported) {
-                                    "✅ ${selectedConnection.type.uppercase()} soportado en este target"
+                                    "✅ ${selectedConnection.type.uppercase()} soportado"
                                 } else {
-                                    "⚠️ ${selectedConnection.type.uppercase()} no soportado en este target aún. Solo SQLite está disponible actualmente."
+                                    "⚠️ ${selectedConnection.type.uppercase()} no está soportado. Tipos soportados: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isSupported) Color(0xFF2E7D32) else Color(0xFFE65100)

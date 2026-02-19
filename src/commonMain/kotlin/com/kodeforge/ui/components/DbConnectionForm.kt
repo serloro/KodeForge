@@ -230,7 +230,7 @@ fun DbConnectionForm(
                 }
             }
             
-            // Auth Value Ref
+            // Auth Value Ref / Password
             if (authType != "none") {
                 OutlinedTextField(
                     value = authValueRef,
@@ -238,13 +238,21 @@ fun DbConnectionForm(
                         authValueRef = it
                         errorMessage = null
                     },
-                    label = { Text("Referencia de Secret") },
-                    placeholder = { Text("secret:db_001") },
+                    label = { 
+                        Text(if (authType == "password") "Contraseña" else "Referencia de Secret / Valor") 
+                    },
+                    placeholder = { 
+                        Text(if (authType == "password") "Ingresa tu contraseña" else "secret:db_001") 
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     supportingText = {
                         Text(
-                            text = "Referencia al secret almacenado de forma segura (no guardar contraseñas aquí)",
+                            text = if (authType == "password") {
+                                "Puedes ingresar la contraseña directamente o usar una referencia (secret:xxx)"
+                            } else {
+                                "Referencia al secret almacenado o valor directo"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF666666)
                         )

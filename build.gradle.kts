@@ -58,10 +58,22 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
                 // SubEthaSMTP para servidor SMTP fake
                 implementation("org.subethamail:subethasmtp:3.1.7")
-                // SQLite JDBC para Query Runner
-                implementation("org.xerial:sqlite-jdbc:3.45.1.0")
                 // JSch para conexiones SFTP
                 implementation("com.github.mwiede:jsch:0.2.16")
+                
+                // ===== DRIVERS JDBC PARA BASES DE DATOS =====
+                // SQLite - Base de datos embebida
+                implementation("org.xerial:sqlite-jdbc:3.45.1.0")
+                // PostgreSQL - Base de datos relacional
+                implementation("org.postgresql:postgresql:42.7.1")
+                // MySQL - Base de datos relacional
+                implementation("com.mysql:mysql-connector-j:8.2.0")
+                // MariaDB - Fork de MySQL
+                implementation("org.mariadb.jdbc:mariadb-java-client:3.3.2")
+                // SQL Server - Base de datos de Microsoft
+                implementation("com.microsoft.sqlserver:mssql-jdbc:12.6.0.jre11")
+                // Oracle - Base de datos empresarial (driver libre)
+                implementation("com.oracle.database.jdbc:ojdbc11:23.3.0.23.09")
             }
         }
         
