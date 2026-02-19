@@ -126,6 +126,21 @@ fun ToolScreen(
         return
     }
 
+    // Si es "sftpdrive", renderizar SftpDriveToolScreen
+    if (toolType == "sftpdrive") {
+        SftpDriveToolScreen(
+            workspace = workspace,
+            projectId = project.id,
+            project = project,
+            onWorkspaceUpdate = onWorkspaceUpdate,
+            onBack = onBack,
+            onToolClick = onToolClick,
+            onBackToHub = onBackToHub,
+            modifier = modifier
+        )
+        return
+    }
+
     // Si es "tasks", mostrar tablón de tareas del proyecto
     if (toolType == "tasks") {
         TasksBoardScreen(
@@ -286,6 +301,12 @@ private val toolConfigs = mapOf(
         title = "SFTP/SSH",
         description = "Conexión SFTP y explorador de archivos remoto",
         icon = "📁"
+    ),
+    "sftpdrive" to ToolConfig(
+        id = "sftpdrive",
+        title = "Unidad SFTP",
+        description = "Monta una unidad virtual (Windows) usando SSHFS-Win",
+        icon = "🧷"
     ),
     "bbdd" to ToolConfig(
         id = "bbdd",

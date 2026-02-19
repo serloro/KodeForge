@@ -54,6 +54,8 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
+                // Provee Dispatchers.Main en JVM (Swing/AWT)
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
                 // SubEthaSMTP para servidor SMTP fake
                 implementation("org.subethamail:subethasmtp:3.1.7")
                 // SQLite JDBC para Query Runner

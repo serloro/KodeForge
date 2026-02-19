@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kodeforge.ui.theme.KodeForgeColors
 import com.kodeforge.ui.theme.KodeForgeSpacing
+import com.kodeforge.platform.isWindows
 
 /**
  * Sidebar de herramientas/utilidades para el modo proyecto.
@@ -71,7 +72,7 @@ fun ToolsSidebar(
             Spacer(Modifier.height(KodeForgeSpacing.XS)) // 8dp
             
             // Lista de herramientas
-            val tools = listOf(
+            val tools = mutableListOf(
                 ToolData("smtp", "SMTP Fake", Icons.Default.Email, Color(0xFF2196F3)),
                 ToolData("rest", "REST/SOAP API", Icons.Default.Settings, Color(0xFF4CAF50)),
                 ToolData("info", "Info - Documentación", Icons.Default.Info, Color(0xFFFF9800)),
@@ -79,6 +80,9 @@ fun ToolsSidebar(
                 ToolData("sftp", "SFTP/SSH", Icons.Default.List, Color(0xFFF44336)),
                 ToolData("tasks", "Gestión de Tareas", Icons.Default.CheckCircle, Color(0xFFFFC107))
             )
+            if (isWindows()) {
+                tools.add(ToolData("sftpdrive", "Unidad SFTP", Icons.Default.Settings, Color(0xFF795548)))
+            }
             
             tools.forEach { tool ->
                 ToolItem(
@@ -183,4 +187,3 @@ private data class ToolData(
     val icon: ImageVector,
     val color: Color
 )
-

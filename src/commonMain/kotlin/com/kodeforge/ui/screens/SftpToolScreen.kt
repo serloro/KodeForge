@@ -63,6 +63,10 @@ fun SftpToolScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
+            // IMPORTANTE:
+            // Evita usar `return@Column` dentro de un Composable. En Compose esto puede romper el
+            // balanceo interno de grupos durante recomposición y provocar errores como:
+            // IndexOutOfBoundsException (Stack.pop / exitGroup).
             if (showExplorer && explorerConnection != null) {
                 SftpFileExplorer(
                     connection = explorerConnection!!,
@@ -72,78 +76,77 @@ fun SftpToolScreen(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-                return@Column
-            }
-        
-        // Header con toggle enabled
-        Surface(
-            color = Color.White,
-            shadowElevation = 2.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Conexiones SFTP",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF212121)
-                    )
-                    Text(
-                        text = "Gestiona tus conexiones SFTP/SSH",
-                        fontSize = 14.sp,
-                        color = Color(0xFF757575)
-                    )
-                }
-                
-                Column(
-                    horizontalAlignment = Alignment.End
+            } else {
+
+                // Header con toggle enabled
+                Surface(
+                    color = Color.White,
+                    shadowElevation = 2.dp
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = if (sftpTool?.enabled == true) "Habilitado" else "Deshabilitado",
-                            fontSize = 14.sp,
-                            color = if (sftpTool?.enabled == true) Color(0xFF4CAF50) else Color(0xFF757575),
-                            fontWeight = FontWeight.Medium
-                        )
-                        
-                        Switch(
-                            checked = sftpTool?.enabled == true,
-                            onCheckedChange = { enabled ->
-                                val result = if (enabled) {
-                                    useCases.enableSftpTool(workspace, projectId)
-                                } else {
-                                    useCases.disableSftpTool(workspace, projectId)
-                                }
-                                result.onSuccess { updatedWorkspace ->
-                                    onWorkspaceUpdate(updatedWorkspace)
-                                }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF4CAF50),
-                                checkedTrackColor = Color(0xFFC8E6C9)
+                        Column {
+                            Text(
+                                text = "Conexiones SFTP",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
                             )
-                        )
+                            Text(
+                                text = "Gestiona tus conexiones SFTP/SSH",
+                                fontSize = 14.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (sftpTool?.enabled == true) "Habilitado" else "Deshabilitado",
+                                    fontSize = 14.sp,
+                                    color = if (sftpTool?.enabled == true) Color(0xFF4CAF50) else Color(0xFF757575),
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Switch(
+                                    checked = sftpTool?.enabled == true,
+                                    onCheckedChange = { enabled ->
+                                        val result = if (enabled) {
+                                            useCases.enableSftpTool(workspace, projectId)
+                                        } else {
+                                            useCases.disableSftpTool(workspace, projectId)
+                                        }
+                                        result.onSuccess { updatedWorkspace ->
+                                            onWorkspaceUpdate(updatedWorkspace)
+                                        }
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color(0xFF4CAF50),
+                                        checkedTrackColor = Color(0xFFC8E6C9)
+                                    )
+                                )
+                            }
+                            Text(
+                                text = "Habilita para usar conexiones SFTP",
+                                fontSize = 12.sp,
+                                color = Color(0xFF999999)
+                            )
+                        }
                     }
-                    Text(
-                        text = "Habilita para usar conexiones SFTP",
-                        fontSize = 12.sp,
-                        color = Color(0xFF999999)
-                    )
                 }
-            }
-        }
-        
-        // Contenido
-        if (showForm) {
+
+                // Contenido
+                if (showForm) {
             // Mostrar formulario
             Box(
                 modifier = Modifier
@@ -197,7 +200,7 @@ fun SftpToolScreen(
                     modifier = Modifier.widthIn(max = 600.dp)
                 )
             }
-        } else {
+                } else {
             // Mostrar lista de conexiones
             Box(
                 modifier = Modifier.fillMaxSize()
@@ -336,7 +339,7 @@ fun SftpToolScreen(
                 }
             }
         )
-        }
     }
 }
-
+}
+}

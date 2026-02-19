@@ -17,8 +17,14 @@ import com.kodeforge.data.repository.JvmFileSystemAdapter
 import com.kodeforge.data.repository.WorkspaceRepository
 import com.kodeforge.domain.model.Workspace
 import com.kodeforge.smtp.SmtpServerManager
+import com.kodeforge.ui.error.AppErrorReporter
+import com.kodeforge.ui.error.GlobalErrorHost
 import com.kodeforge.ui.screens.HomeScreen
 import com.kodeforge.ui.theme.KodeForgeTheme
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
@@ -28,6 +34,11 @@ import kotlinx.coroutines.launch
  * Cargar workspace desde workspace.json (o specs/data-schema.json si no existe).
  */
 fun main() = application {
+    // Captura excepciones no controladas (incluyendo AWT-EventQueue) para evitar que la app "casque".
+    Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
+        AppErrorReporter.report(throwable, context = "Excepción no controlada")
+    }
+
     val windowState = rememberWindowState(width = 1400.dp, height = 900.dp)
     
     Window(
@@ -45,8 +56,17 @@ fun KodeForgeApp() {
     val smtpServerManager = remember { SmtpServerManager() }
     var workspace by remember { mutableStateOf<Workspace?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    
-    val scope = rememberCoroutineScope()
+
+    // Scope robusto: cualquier excepción en corutinas se reporta a UI.
+    val coroutineExceptionHandler = remember {
+        CoroutineExceptionHandler { _, throwable ->
+            AppErrorReporter.report(throwable, context = "Error en segundo plano")
+        }
+    }
+
+    val scope = remember {
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + coroutineExceptionHandler)
+    }
     
     // Detener todos los servidores al cerrar la aplicación
     DisposableEffect(Unit) {
@@ -58,64 +78,64 @@ fun KodeForgeApp() {
     // Cargar workspace al iniciar
     LaunchedEffect(Unit) {
         scope.launch {
-            try {
+            runCatching {
                 // Intentar cargar workspace.json
-                workspace = try {
-                    repository.load("workspace.json")
-                } catch (e: Exception) {
-                    println("workspace.json no encontrado, creando workspace inicial...")
-                    // Si no existe, crear uno vacío por defecto
-                    repository.createDefaultWorkspace()
-                }
-            } catch (e: Exception) {
-                error = "Error al cargar workspace: ${e.message}"
-                e.printStackTrace()
+                repository.load("workspace.json")
+            }.recoverCatching {
+                println("workspace.json no encontrado o inválido, creando workspace inicial...")
+                repository.createDefaultWorkspace()
+            }.onSuccess {
+                workspace = it
+            }.onFailure {
+                error = "Error al cargar workspace"
+                AppErrorReporter.report(it, context = "Carga de workspace")
             }
         }
     }
     
     KodeForgeTheme {
-        when {
-            error != null -> {
-                // Pantalla de error
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Error: $error",
-                        color = Color.Red,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-            workspace == null -> {
-                // Pantalla de carga
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            else -> {
-                // Pantalla principal
-                HomeScreen(
-                    workspace = workspace!!,
-                    smtpServerManager = smtpServerManager,
-                    onWorkspaceUpdate = { updatedWorkspace ->
-                        workspace = updatedWorkspace
-                        // TODO: Auto-guardar cambios
-                        scope.launch {
-                            try {
-                                repository.save("workspace.json", updatedWorkspace)
-                            } catch (e: Exception) {
-                                println("Error al guardar workspace: ${e.message}")
-                            }
+        GlobalErrorHost {
+            when {
+                    error != null -> {
+                        // Pantalla de error "suave" (la app sigue viva)
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = error!!,
+                                color = Color.Red,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
                     }
-                )
-            }
+                    workspace == null -> {
+                        // Pantalla de carga
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    else -> {
+                        // Pantalla principal
+                        HomeScreen(
+                            workspace = workspace!!,
+                            smtpServerManager = smtpServerManager,
+                            onWorkspaceUpdate = { updatedWorkspace ->
+                                workspace = updatedWorkspace
+                                scope.launch {
+                                    runCatching {
+                                        repository.save("workspace.json", updatedWorkspace)
+                                    }.onFailure {
+                                        AppErrorReporter.report(it, context = "Guardado de workspace")
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
         }
     }
 }
